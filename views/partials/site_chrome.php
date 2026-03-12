@@ -14,52 +14,16 @@ if (!function_exists('site_default_notice_html')) {
 
 if (!function_exists('site_render_floating_header')) {
     function site_render_floating_header(array $options = []) {
-        $shortLabel = isset($options['shortLabel']) ? $options['shortLabel'] : 'PAD';
-        $brandHref = isset($options['brandHref']) ? $options['brandHref'] : 'index.php';
         ?>
-<header class="subsite-header">
-    <div class="container-custom subsite-header-inner">
-        <a href="<?php echo htmlspecialchars($brandHref); ?>" class="subsite-brand">
-            <span class="subsite-brand-dot" aria-hidden="true"></span>
-            <span class="subsite-brand-text">
-                <span class="subsite-brand-short"><?php echo htmlspecialchars($shortLabel); ?></span>
-            </span>
-        </a>
-    </div>
-</header>
+<header class="subsite-header subsite-header-empty" aria-hidden="true"></header>
         <?php
     }
 }
 
 if (!function_exists('site_render_bar_header')) {
     function site_render_bar_header(array $options = []) {
-        $brandShort = isset($options['brandShort']) ? $options['brandShort'] : 'PAD';
-        $brandHref = isset($options['brandHref']) ? $options['brandHref'] : 'index.php';
-        $navLinks = isset($options['navLinks']) ? $options['navLinks'] : [];
-        $defaultNavClass = 'subsite-nav-link';
         ?>
-<header class="subsite-header">
-    <div class="container-custom subsite-header-inner">
-        <a href="<?php echo htmlspecialchars($brandHref); ?>" class="subsite-brand">
-            <span class="subsite-brand-dot" aria-hidden="true"></span>
-            <span class="subsite-brand-text">
-                <span class="subsite-brand-short"><?php echo htmlspecialchars($brandShort); ?></span>
-            </span>
-        </a>
-        <?php if (!empty($navLinks)): ?>
-            <nav class="subsite-nav" aria-label="Seiten-Navigation">
-                <?php foreach ($navLinks as $link): ?>
-                    <?php
-                    $href = isset($link['href']) ? $link['href'] : '#';
-                    $label = isset($link['label']) ? $link['label'] : '';
-                    $class = isset($link['class']) ? $defaultNavClass . ' ' . $link['class'] : $defaultNavClass;
-                    ?>
-                    <a href="<?php echo htmlspecialchars($href); ?>" class="<?php echo htmlspecialchars($class); ?>"><?php echo htmlspecialchars($label); ?></a>
-                <?php endforeach; ?>
-            </nav>
-        <?php endif; ?>
-    </div>
-</header>
+<header class="subsite-header subsite-header-empty" aria-hidden="true"></header>
         <?php
     }
 }

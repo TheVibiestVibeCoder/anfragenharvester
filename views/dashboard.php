@@ -227,17 +227,7 @@
 </head>
 <body class="dashboard-page flex flex-col min-h-screen">
 
-<header class="site-header w-full z-50">
-    <div class="site-header-inner container-custom flex justify-between items-center">
-        <a href="index.php" class="site-brand flex items-center gap-3 group">
-            <div class="site-brand-dot w-3 h-3"></div>
-
-            <span class="site-brand-text font-bebas text-xl md:text-2xl tracking-widest mt-1">
-                <span>NBT</span>
-            </span>
-        </a>
-    </div>
-</header>
+<header class="site-header w-full z-50" aria-hidden="true"></header>
 
     <section class="hero-shell">
 

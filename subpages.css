@@ -50,14 +50,7 @@ a {
 
 /* Shared header from site_chrome.php */
 .subsite-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 90;
-    border-bottom: 1px solid rgba(29, 47, 38, 0.14);
-    background: rgba(247, 244, 234, 0.96);
-    backdrop-filter: blur(6px);
+    display: none;
 }
 
 .subsite-header-inner {
@@ -118,7 +111,7 @@ a {
 .subsite-main {
     flex: 1;
     width: 100%;
-    padding-top: 6.6rem;
+    padding-top: 2.3rem;
     padding-bottom: 4rem;
 }
 
@@ -475,7 +468,7 @@ a {
 
 @media (min-width: 780px) {
     .subsite-main {
-        padding-top: 7.2rem;
+        padding-top: 2.8rem;
     }
 
     .grid-2 {
