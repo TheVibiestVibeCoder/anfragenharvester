@@ -15,7 +15,6 @@ if (!function_exists('site_default_notice_html')) {
 if (!function_exists('site_render_floating_header')) {
     function site_render_floating_header(array $options = []) {
         $shortLabel = isset($options['shortLabel']) ? $options['shortLabel'] : 'PAD';
-        $longLabel = isset($options['longLabel']) ? $options['longLabel'] : 'Parlaments-Anfragen Dashboard';
         $brandHref = isset($options['brandHref']) ? $options['brandHref'] : 'index.php';
         ?>
 <header class="subsite-header">
@@ -24,7 +23,6 @@ if (!function_exists('site_render_floating_header')) {
             <span class="subsite-brand-dot" aria-hidden="true"></span>
             <span class="subsite-brand-text">
                 <span class="subsite-brand-short"><?php echo htmlspecialchars($shortLabel); ?></span>
-                <span class="subsite-brand-long"><?php echo htmlspecialchars($longLabel); ?></span>
             </span>
         </a>
     </div>
@@ -35,7 +33,6 @@ if (!function_exists('site_render_floating_header')) {
 
 if (!function_exists('site_render_bar_header')) {
     function site_render_bar_header(array $options = []) {
-        $brandText = isset($options['brandText']) ? $options['brandText'] : 'Parlaments-Anfragen Dashboard';
         $brandShort = isset($options['brandShort']) ? $options['brandShort'] : 'PAD';
         $brandHref = isset($options['brandHref']) ? $options['brandHref'] : 'index.php';
         $navLinks = isset($options['navLinks']) ? $options['navLinks'] : [];
@@ -47,7 +44,6 @@ if (!function_exists('site_render_bar_header')) {
             <span class="subsite-brand-dot" aria-hidden="true"></span>
             <span class="subsite-brand-text">
                 <span class="subsite-brand-short"><?php echo htmlspecialchars($brandShort); ?></span>
-                <span class="subsite-brand-long"><?php echo htmlspecialchars($brandText); ?></span>
             </span>
         </a>
         <?php if (!empty($navLinks)): ?>

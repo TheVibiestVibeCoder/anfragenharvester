@@ -233,8 +233,7 @@
             <div class="site-brand-dot w-3 h-3"></div>
 
             <span class="site-brand-text font-bebas text-xl md:text-2xl tracking-widest mt-1">
-                <span class="md:hidden">NBT</span>
-                <span class="hidden md:inline">Parlaments-Anfragen Dashboard</span>
+                <span>NBT</span>
             </span>
         </a>
     </div>
