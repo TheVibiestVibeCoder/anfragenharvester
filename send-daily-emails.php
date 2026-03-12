@@ -6,6 +6,10 @@
 // Example cron: 0 20 * * * /usr/bin/php /path/to/send-daily-emails.php
 
 require_once __DIR__ . '/MailingListDB.php';
+require_once __DIR__ . '/app/config.php';
+require_once __DIR__ . '/app/party.php';
+require_once __DIR__ . '/app/inquiry_helpers.php';
+require_once __DIR__ . '/app/parliament_api.php';
 
 // Error handling
 error_reporting(E_ALL);
@@ -13,115 +17,36 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/email-sender-errors.log');
 
-// Parliament API configuration
-define('PARL_API_URL', 'https://www.parlament.gv.at/Filter/api/filter/data/101?js=eval&showAll=true');
-
-// Party color mapping
-define('PARTY_COLORS', [
-    'S' => '#EF4444',   // SPÖ - Red
-    'V' => '#22D3EE',   // ÖVP - Cyan
-    'F' => '#3B82F6',   // FPÖ - Blue
-    'G' => '#22C55E',   // GRÜNE - Green
-    'N' => '#E879F9',   // NEOS - Magenta
-    'OTHER' => '#9CA3AF' // Other - Gray
-]);
-
-define('PARTY_NAMES', [
-    'S' => 'SPÖ',
-    'V' => 'ÖVP',
-    'F' => 'FPÖ',
-    'G' => 'GRÜNE',
-    'N' => 'NEOS',
-    'OTHER' => 'Andere'
-]);
-
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
 
-function getPartyCode($rowPartyJson) {
-    $rowParties = json_decode($rowPartyJson ?? '[]', true);
-    if (!is_array($rowParties)) return 'OTHER';
-    $pStr = mb_strtoupper(implode(' ', $rowParties));
-
-    if (strpos($pStr, 'SPÖ') !== false || strpos($pStr, 'SOZIALDEMOKRATEN') !== false) return 'S';
-    if (strpos($pStr, 'ÖVP') !== false || strpos($pStr, 'VOLKSPARTEI') !== false) return 'V';
-    if (strpos($pStr, 'FPÖ') !== false || strpos($pStr, 'FREIHEITLICHE') !== false) return 'F';
-    if (strpos($pStr, 'GRÜNE') !== false) return 'G';
-    if (strpos($pStr, 'NEOS') !== false) return 'N';
-
-    return 'OTHER';
-}
-
-function getRowValue($row, $index, $key = null) {
-    if (!is_array($row)) return '';
-    if (array_key_exists($index, $row)) return $row[$index];
-    if ($key !== null && array_key_exists($key, $row)) return $row[$key];
-    return '';
-}
-
-function buildInquiryLink($rowLink) {
-    if (empty($rowLink)) return '';
-    if (strpos($rowLink, 'http://') === 0 || strpos($rowLink, 'https://') === 0) {
-        return $rowLink;
-    }
-    return 'https://www.parlament.gv.at' . $rowLink;
-}
-
-function fetchAllRows($gpCodes) {
-    $payload = [
-        "GP_CODE" => $gpCodes,
-        "VHG" => ["J_JPR_M"],
-        "DOKTYP" => ["J", "JPR"]
-    ];
-
-    $ch = curl_init(PARL_API_URL);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode !== 200) {
-        error_log("API request failed with HTTP code: $httpCode");
-        return null;
-    }
-
-    return json_decode($response, true);
-}
-
 function getNewEntries() {
-    // Fetch data from Parliament API
-    $gpCodes = ["XXVIII", "XXVII", "XXVI", "XXV", "BR"];
-    $apiResponse = fetchAllRows($gpCodes);
+    $partyColors = app_party_colors();
+    $partyNames = app_party_names();
 
-    if (!$apiResponse || !isset($apiResponse['rows'])) {
-        error_log('Failed to fetch data from Parliament API');
+    // Fetch data from Parliament API
+    $gpCodes = ['XXVIII', 'XXVII', 'XXVI', 'XXV', 'BR'];
+    $allRows = app_fetch_parliament_rows($gpCodes, ['J', 'JPR'], 30);
+
+    if (empty($allRows)) {
+        error_log('Failed to fetch data rows from Parliament API');
         return [];
     }
 
-    $allRows = $apiResponse['rows'];
     $newEntries = [];
-
-    // Calculate cutoff date (24 hours ago)
     $cutoffDate = new DateTime('24 hours ago');
 
     foreach ($allRows as $row) {
-        $title = trim((string) getRowValue($row, 6, 'TITEL'));
-        $dateStr = trim((string) getRowValue($row, 4, 'DATUM'));
-        $partyJson = getRowValue($row, 21, 'PARTIE');
-        $rowLink = getRowValue($row, 14, 'LINK');
-        $inquiryNumber = trim((string) getRowValue($row, 7, 'NPARL'));
+        $title = trim((string) app_get_row_value($row, 6, 'TITEL'));
+        $dateStr = trim((string) app_get_row_value($row, 4, 'DATUM'));
+        $partyJson = app_get_row_value($row, 21, 'PARTIE');
+        $rowLink = app_get_row_value($row, 14, 'LINK');
+        $inquiryNumber = trim((string) app_get_row_value($row, 7, 'NPARL'));
 
-        // Parse date
-        if (empty($dateStr)) continue;
+        if ($dateStr === '') {
+            continue;
+        }
 
         $entryDate = DateTime::createFromFormat('d.m.Y', $dateStr);
         if (!$entryDate) {
@@ -132,14 +57,15 @@ function getNewEntries() {
             }
         }
 
-        // Check if entry is from last 24 hours
         if ($entryDate < $cutoffDate) {
             continue;
         }
 
-        // Extract relevant information
-        $partyCode = getPartyCode($partyJson);
-        $link = buildInquiryLink($rowLink);
+        $partyCode = app_get_party_code($partyJson);
+        $partyName = isset($partyNames[$partyCode]) ? $partyNames[$partyCode] : $partyNames['OTHER'];
+        $partyColor = isset($partyColors[$partyCode]) ? $partyColors[$partyCode] : $partyColors['OTHER'];
+
+        $link = app_build_inquiry_link($rowLink);
         $title = $title !== '' ? $title : ('Anfrage ' . ($inquiryNumber !== '' ? $inquiryNumber : '(ohne Titel)'));
 
         $newEntries[] = [
@@ -147,14 +73,13 @@ function getNewEntries() {
             'date_obj' => $entryDate,
             'title' => $title,
             'party' => $partyCode,
-            'party_name' => PARTY_NAMES[$partyCode],
-            'party_color' => PARTY_COLORS[$partyCode],
+            'party_name' => $partyName,
+            'party_color' => $partyColor,
             'link' => $link,
             'nparl' => $inquiryNumber
         ];
     }
 
-    // Sort by date (newest first)
     usort($newEntries, function($a, $b) {
         return $b['date_obj'] <=> $a['date_obj'];
     });
