@@ -46,13 +46,9 @@ function app_build_dashboard_view_model($queryParams, $cache) {
                 continue;
             }
 
-            $rowDate = DateTime::createFromFormat('d.m.Y', $rowDateStr);
-            if (!$rowDate) {
-                try {
-                    $rowDate = new DateTime($rowDateStr);
-                } catch (Exception $e) {
-                    continue;
-                }
+            $rowDate = app_parse_row_date($rowDateStr);
+            if (!$rowDate instanceof DateTime) {
+                continue;
             }
             if ($rowDate < $cutoffDate) {
                 continue;

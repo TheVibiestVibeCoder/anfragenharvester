@@ -261,22 +261,36 @@
             <div class="mb-8 lg:mb-0">
                 <h2 class="text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-white leading-none">Anfragen Tracker</h2>
             </div>
-            
-            <form method="GET" class="w-full lg:w-auto">
-                <div class="flex flex-col items-start w-full">
-                    <label for="time-range-select" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Zeitraum wählen</label>
-                    <select id="time-range-select" name="range" onchange="this.form.submit()" class="w-full lg:w-auto" aria-label="Zeitraum für Anfragen auswählen">
-                        <option value="1week" <?php echo $timeRange === '1week' ? 'selected' : ''; ?>>LETZTE WOCHE</option>
-                        <option value="1month" <?php echo $timeRange === '1month' ? 'selected' : ''; ?>>LETZTER MONAT</option>
-                        <option value="3months" <?php echo $timeRange === '3months' ? 'selected' : ''; ?>>3 MONATE</option>
-                        <option value="6months" <?php echo $timeRange === '6months' ? 'selected' : ''; ?>>6 MONATE</option>
-                        <option value="12months" <?php echo $timeRange === '12months' ? 'selected' : ''; ?>>12 MONATE</option>
-                        <option value="1year" <?php echo $timeRange === '1year' ? 'selected' : ''; ?>>LETZTES JAHR</option>
-                        <option value="3years" <?php echo $timeRange === '3years' ? 'selected' : ''; ?>>3 JAHRE</option>
-                        <option value="5years" <?php echo $timeRange === '5years' ? 'selected' : ''; ?>>5 JAHRE</option>
-                    </select>
-                </div>
-            </form>
+
+            <?php
+            $exportParams = $_GET;
+            $exportParams['range'] = $timeRange;
+            unset($exportParams['page']);
+            $exportParams['format'] = 'xlsx';
+            $exportUrl = 'export.php?' . http_build_query($exportParams);
+            ?>
+
+            <div class="w-full lg:w-auto flex flex-col items-start gap-3">
+                <form method="GET" class="w-full lg:w-auto">
+                    <div class="flex flex-col items-start w-full">
+                        <label for="time-range-select" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Zeitraum wählen</label>
+                        <select id="time-range-select" name="range" onchange="this.form.submit()" class="w-full lg:w-auto" aria-label="Zeitraum für Anfragen auswählen">
+                            <option value="1week" <?php echo $timeRange === '1week' ? 'selected' : ''; ?>>LETZTE WOCHE</option>
+                            <option value="1month" <?php echo $timeRange === '1month' ? 'selected' : ''; ?>>LETZTER MONAT</option>
+                            <option value="3months" <?php echo $timeRange === '3months' ? 'selected' : ''; ?>>3 MONATE</option>
+                            <option value="6months" <?php echo $timeRange === '6months' ? 'selected' : ''; ?>>6 MONATE</option>
+                            <option value="12months" <?php echo $timeRange === '12months' ? 'selected' : ''; ?>>12 MONATE</option>
+                            <option value="1year" <?php echo $timeRange === '1year' ? 'selected' : ''; ?>>LETZTES JAHR</option>
+                            <option value="3years" <?php echo $timeRange === '3years' ? 'selected' : ''; ?>>3 JAHRE</option>
+                            <option value="5years" <?php echo $timeRange === '5years' ? 'selected' : ''; ?>>5 JAHRE</option>
+                        </select>
+                    </div>
+                </form>
+
+                <a href="<?php echo htmlspecialchars($exportUrl); ?>" class="inline-flex items-center border border-emerald-700 text-emerald-400 px-3 py-2 text-xs font-mono uppercase tracking-wide hover:bg-emerald-700 hover:text-black transition-colors">
+                    Excel Export
+                </a>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-16 mb-16 lg:mb-20">
