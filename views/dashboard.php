@@ -44,12 +44,12 @@
     <meta name="twitter:title" content="<?php echo htmlspecialchars($seoTitle); ?>">
     <meta name="twitter:description" content="<?php echo htmlspecialchars($seoDescription); ?>">
 
-    <meta name="theme-color" content="#111111">
-    <meta name="msapplication-TileColor" content="#111111">
+    <meta name="theme-color" content="#f7f4ea">
+    <meta name="msapplication-TileColor" content="#f7f4ea">
     <meta name="application-name" content="Parlaments-Anfragen Dashboard">
     <meta name="apple-mobile-web-app-title" content="Parlaments-Anfragen Dashboard">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <link rel="alternate" hreflang="de-at" href="<?php echo htmlspecialchars($currentUrl); ?>">
     <link rel="alternate" hreflang="de" href="<?php echo htmlspecialchars($currentUrl); ?>">
@@ -225,50 +225,29 @@
     </script>
      
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="dashboard-page flex flex-col min-h-screen">
 
-<header class="w-full absolute top-0 z-50 bg-transparent">
-    <div class="container mx-auto px-6 h-16 flex justify-between items-center">
-        <a href="index.php" class="flex items-center gap-3 group">
-            <div class="w-3 h-3 bg-white group-hover:bg-green-500 transition-colors duration-300"></div>
-            
-            <span class="font-bebas text-xl md:text-2xl tracking-widest text-white mt-1">
-                <span class="md:hidden">NBT</span>
-                <span class="hidden md:inline">Parlaments-Anfragen Dashboard</span>
-            </span>
-        </a>
-</header>
+<header class="site-header w-full z-50" aria-hidden="true"></header>
 
-    <section class="min-h-screen flex flex-col justify-between items-center text-center bg-black border-b border-white px-4 py-6 md:px-6 md:py-8 lg:py-12 pt-24">
+    <section class="hero-shell">
 
-        <div class="flex-grow flex flex-col justify-center max-w-5xl mx-auto w-full py-4 md:py-8 lg:py-0">
-            <article>
-                <header class="mb-6 md:mb-8">
-                    <span class="inline-block border-b border-gray-600 pb-1 mb-4 md:mb-6 text-[10px] md:text-xs font-mono text-gray-400 uppercase tracking-[0.2em]">Die Analyse</span>
-                    <h1 class="text-5xl sm:text-6xl md:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl text-white leading-[0.9] mb-4 md:mb-6 break-words tracking-tight" style="font-family: 'Bebas Neue', sans-serif;">
+        <div class="hero-inner">
+            <article class="hero-article">
+                <header class="hero-copy mb-6 md:mb-8">
+                    <span class="hero-kicker">Die Analyse</span>
+                    <h1 class="hero-title" style="font-family: 'Bebas Neue', sans-serif;">
                         Parlamentarische<br>Anfragen im Fokus
                     </h1>
                 </header>
 
-                <div class="space-y-4 md:space-y-6 max-w-3xl mx-auto text-left md:text-center px-4">
-                    <p class="text-sm md:text-base lg:text-lg text-gray-300 font-sans leading-relaxed">
-                        Dieses Dashboard zeigt alle parlamentarischen Anfragen im ausgewählten Zeitraum. Seit <?php echo $earliestDateFormatted; ?> wurden <?php echo number_format($totalCount); ?> Anfragen erfasst.
-                    </p>
-
-                    <p class="text-sm md:text-base lg:text-lg text-gray-300 font-sans leading-relaxed">
-                       Die Daten werden ungefiltert aus dem Open-Data-Feed des Parlaments geladen und nach Datum, Partei, Status und Begriffen visualisiert.
-                        <br><br>
-                        <span class="text-white"> So wird tägliche Anfrage-Aktivität transparent sichtbar.</span>
-                    </p>
-                </div>
             </article>
         </div>
 
-        <div class="w-full flex flex-col items-center justify-center pb-6 md:pb-0">
-             <a href="#tracker" class="group flex flex-col items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity p-2">
-                <span class="text-[10px] md:text-xs font-mono uppercase tracking-widest text-gray-500 group-hover:text-white transition-colors">Zum Anfragen-Tracker</span>
-                <div class="w-8 h-8 md:w-10 md:h-10 border border-white flex items-center justify-center rounded-full">
-                    <svg class="w-3 h-3 md:w-4 md:h-4 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="hero-scroll-wrap">
+             <a href="#tracker" class="hero-scroll group">
+                <span class="hero-scroll-label">Zum Anfragen-Tracker</span>
+                <div class="hero-scroll-icon">
+                    <svg class="w-3 h-3 md:w-4 md:h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
                     </svg>
                 </div>
@@ -276,9 +255,9 @@
         </div>
     </section>
 
-    <main id="tracker" class="container-custom pt-16 md:pt-24 lg:pt-20 xl:pt-24">
+    <main id="tracker" class="dashboard-main container-custom">
 
-        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 lg:mb-16 xl:mb-20 border-b-2 border-white pb-8">
+        <header class="tracker-header flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 lg:mb-16 xl:mb-20 border-b-2 border-white pb-8">
             <div class="mb-8 lg:mb-0">
                 <h2 class="text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-white leading-none">Anfragen Tracker</h2>
             </div>
@@ -286,7 +265,7 @@
             <form method="GET" class="w-full lg:w-auto">
                 <div class="flex flex-col items-start w-full">
                     <label for="time-range-select" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Zeitraum wählen</label>
-                    <select id="time-range-select" name="range" onchange="this.form.submit()" class="w-full lg:w-auto" style="background: #000 !important; color: #fff !important; border: 2px solid #fff !important; padding: 0.5rem 2rem 0.5rem 0.75rem !important;" aria-label="Zeitraum für Anfragen auswählen">
+                    <select id="time-range-select" name="range" onchange="this.form.submit()" class="w-full lg:w-auto" aria-label="Zeitraum für Anfragen auswählen">
                         <option value="1week" <?php echo $timeRange === '1week' ? 'selected' : ''; ?>>LETZTE WOCHE</option>
                         <option value="1month" <?php echo $timeRange === '1month' ? 'selected' : ''; ?>>LETZTER MONAT</option>
                         <option value="3months" <?php echo $timeRange === '3months' ? 'selected' : ''; ?>>3 MONATE</option>
@@ -659,7 +638,7 @@
         </div>
     </div>
 
-    <footer class="bg-black border-t border-white py-8 md:py-12 mt-auto">
+    <footer class="site-footer bg-black border-t border-white py-8 md:py-12 mt-auto">
         <div class="container-custom">
             <div class="flex flex-col md:flex-row justify-between items-start gap-8">
                 <div class="max-w-md">
@@ -709,8 +688,8 @@
             console.log('🎨 Initializing charts...');
 
             // Chart Config - Cleaner, less "techy" more editorial
-            Chart.defaults.color = '#555';
-            Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
+            Chart.defaults.color = '#4f544a';
+            Chart.defaults.borderColor = 'rgba(32,35,31,0.12)';
             Chart.defaults.font.family = "'Inter', sans-serif";
 
             // Disable animations completely to prevent callback errors
@@ -747,13 +726,13 @@
                         datasets: [{
                             label: 'Anfragen',
                             data: counts,
-                            borderColor: '#ffffff',
+                            borderColor: '#174d37',
                             backgroundColor: 'transparent',
                             borderWidth: 2,
                             pointRadius: 3,
                             pointHoverRadius: 8,
-                            pointHoverBackgroundColor: '#ffffff',
-                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBackgroundColor: '#174d37',
+                            pointHoverBorderColor: '#f6f4ea',
                             pointHoverBorderWidth: 3,
                             tension: 0.1
                         }]
@@ -794,7 +773,7 @@
                                 grid: { display: false },
                                 display: true,
                                 ticks: {
-                                    color: '#666',
+                                    color: '#667060',
                                     font: { family: 'JetBrains Mono', size: 10 },
                                     autoSkip: true,
                                     maxRotation: 0
@@ -841,7 +820,7 @@
                         },
                         plugins: {
                             legend: {
-                                labels: { color: '#aaa', font: { family: 'Inter' } }
+                                labels: { color: '#55604f', font: { family: 'Inter' } }
                             },
                             tooltip: {
                                 enabled: true,
@@ -868,7 +847,7 @@
                                 display: true,
                                 grid: { display: false },
                                 ticks: {
-                                    color: '#666',
+                                    color: '#667060',
                                     font: { family: 'JetBrains Mono', size: 10 },
                                     autoSkip: true,
                                     maxTicksLimit: 10,
@@ -876,7 +855,7 @@
                                     minRotation: 0
                                 }
                             },
-                            y: { grid: { color: '#222' } }
+                            y: { grid: { color: '#d8d8ce' } }
                         }
                     }
                 });
@@ -980,7 +959,7 @@
                                         }
                                         return '';
                                     },
-                                    color: '#666',
+                                    color: '#667060',
                                     font: { family: 'JetBrains Mono', size: 10 },
                                     autoSkip: true,
                                     maxRotation: 0
