@@ -1,271 +1,159 @@
 <?php require_once __DIR__ . '/views/partials/site_chrome.php'; ?>
 <?php
-// ==========================================
-// CONTACT FORM
-// ==========================================
-
-// Initialize variables
+// Contact form handling
 $success = false;
 $error = false;
 $errorMessage = '';
 
-// Process form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Basic validation
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
     $message = trim($_POST['message'] ?? '');
 
-    // Validate required fields
-    if (empty($name) || empty($email) || empty($subject) || empty($message)) {
+    if ($name === '' || $email === '' || $subject === '' || $message === '') {
         $error = true;
-        $errorMessage = 'Bitte füllen Sie alle Felder aus.';
-    }
-    // Validate email format
-    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errorMessage = 'Bitte fuellen Sie alle Felder aus.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = true;
-        $errorMessage = 'Bitte geben Sie eine gültige E-Mail-Adresse ein.';
-    }
-    // Send email
-    else {
+        $errorMessage = 'Bitte geben Sie eine gueltige E-Mail-Adresse ein.';
+    } else {
         $to = 'markus@disinfoconsulting.eu';
-        $emailSubject = '[NGO Tracker Kontakt] ' . $subject;
+        $emailSubject = '[Parlaments-Anfragen Dashboard Kontakt] ' . $subject;
 
-        // Build email body
-        $emailBody = "Neue Nachricht vom NGO Business Tracker Kontaktformular\n\n";
+        $emailBody = "Neue Nachricht vom Kontaktformular\n\n";
         $emailBody .= "Name: " . $name . "\n";
         $emailBody .= "E-Mail: " . $email . "\n";
         $emailBody .= "Betreff: " . $subject . "\n\n";
         $emailBody .= "Nachricht:\n" . $message . "\n";
 
-        // Set headers
-        $headers = array(
-            'From: noreply@' . $_SERVER['HTTP_HOST'],
+        $headers = [
+            'From: noreply@' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
             'Reply-To: ' . $email,
             'X-Mailer: PHP/' . phpversion(),
             'Content-Type: text/plain; charset=UTF-8'
-        );
+        ];
 
-        // Send email
         if (mail($to, $emailSubject, $emailBody, implode("\r\n", $headers))) {
             $success = true;
-            // Clear form fields on success
             $name = $email = $subject = $message = '';
         } else {
             $error = true;
-            $errorMessage = 'Beim Versenden der Nachricht ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.';
+            $errorMessage = 'Beim Versenden ist ein Fehler aufgetreten. Bitte spaeter erneut versuchen.';
         }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kontakt | "NGO Business" Tracker</title>
+    <title>Kontakt | Parlaments-Anfragen Dashboard</title>
 
-    <meta name="description" content="Kontaktieren Sie das Team hinter dem NGO Business Tracker. Feedback, Fragen oder Anmerkungen willkommen.">
+    <meta name="description" content="Kontaktseite fuer Fragen und Feedback zum Parlaments-Anfragen Dashboard.">
     <meta name="robots" content="noindex, nofollow">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'bebas': ['"Bebas Neue"', 'cursive'],
-                        'sans': ['"Inter"', 'sans-serif'],
-                        'mono': ['"JetBrains Mono"', 'monospace'],
-                    },
-                    colors: {
-                        'brand-black': '#050505',
-                        'brand-gray': '#1a1a1a',
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        :root {
-            --bg-color: #000000;
-            --text-color: #ffffff;
-            --border-color: #333333;
-        }
-        
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #000; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #333; 
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-
-        .container-custom {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
-        @media (min-width: 768px) {
-            .container-custom {
-                padding: 0 1.5rem;
-            }
-        }
-
-        /* Input Animations */
-        .form-input-container {
-            position: relative;
-        }
-        
-        .custom-input {
-            background: transparent;
-            border-bottom: 1px solid var(--border-color);
-            transition: all 0.3s ease;
-        }
-        
-        .custom-input:focus {
-            border-color: #fff;
-            padding-left: 1rem;
-            background: rgba(255,255,255,0.03);
-        }
-
-        /* Button Hover Effect */
-        .btn-glitch {
-            position: relative;
-            overflow: hidden;
-            transition: all 0.2s ease;
-        }
-        .btn-glitch:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(255,255,255,0.1);
-        }
-    </style>
+    <link rel="stylesheet" href="subpages.css">
 </head>
-<body class="flex flex-col min-h-screen font-sans selection:bg-white selection:text-black">
+<body class="subsite-body">
 
 <?php site_render_floating_header(); ?>
 
-    <main class="flex-grow pt-32 pb-20 px-6">
-        <div class="container mx-auto max-w-2xl">
+<main class="subsite-main">
+    <div class="container-custom page-wrap">
+        <section class="page-hero">
+            <p class="page-kicker">Rueckmeldung</p>
+            <h1 class="page-title">Kontakt</h1>
+            <p class="page-intro">Fragen, Hinweise oder Feedback zum Dashboard? Wir freuen uns ueber jede Rueckmeldung.</p>
+        </section>
 
-            <div class="mb-16 md:mb-24">
-                <h1 class="font-bebas text-6xl md:text-8xl lg:text-9xl text-white leading-[0.85] mb-8">
-                    KONTAKT
-                </h1>
-                <div class="h-px w-24 bg-white mb-8"></div>
-                <p class="text-lg md:text-xl text-gray-400 font-light leading-relaxed max-w-xl">
-                    Haben Sie Fragen, Feedback oder Anmerkungen zum NGO Business Tracker? 
-                    Wir freuen uns über Input, um das Bild zu schärfen.
-                </p>
-            </div>
-
+        <div class="page-stack">
             <?php if ($success): ?>
-                <div class="mb-12 p-6 border border-green-500/30 bg-green-500/5 backdrop-blur-sm">
-                    <h3 class="font-bebas text-2xl text-green-500 mb-2">NACHRICHT GESENDET</h3>
-                    <p class="text-green-400/80 font-mono text-sm">Vielen Dank. Wir melden uns in Kürze.</p>
+                <div class="alert alert-success">
+                    <strong>Nachricht gesendet.</strong> Vielen Dank, wir melden uns so bald wie moeglich.
                 </div>
             <?php endif; ?>
 
             <?php if ($error): ?>
-                <div class="mb-12 p-6 border border-red-500/30 bg-red-500/5 backdrop-blur-sm">
-                    <h3 class="font-bebas text-2xl text-red-500 mb-2">FEHLER</h3>
-                    <p class="text-red-400/80 font-mono text-sm"><?php echo htmlspecialchars($errorMessage); ?></p>
+                <div class="alert alert-error">
+                    <strong>Fehler:</strong> <?php echo htmlspecialchars($errorMessage); ?>
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="" class="space-y-12">
+            <section class="panel">
+                <h2 class="panel-title">Nachricht senden</h2>
+                <form method="POST" action="" class="form-stack">
+                    <div>
+                        <label for="name" class="form-label">Name *</label>
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            class="form-input"
+                            required
+                            value="<?php echo isset($name) ? htmlspecialchars($name) : ''; ?>"
+                            placeholder="Ihr Name"
+                        >
+                    </div>
 
-                <div class="form-input-container">
-                    <label for="name" class="block font-bebas text-xl md:text-2xl text-gray-500 mb-2 tracking-wide">NAME *</label>
-                    <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        class="custom-input w-full py-4 text-lg md:text-xl font-sans text-white focus:outline-none placeholder-gray-800"
-                        required
-                        value="<?php echo isset($name) ? htmlspecialchars($name) : ''; ?>"
-                        placeholder="Ihr Name"
-                    >
-                </div>
+                    <div>
+                        <label for="email" class="form-label">E-Mail *</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            class="form-input"
+                            required
+                            value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>"
+                            placeholder="ihre.email@adresse.at"
+                        >
+                    </div>
 
-                <div class="form-input-container">
-                    <label for="email" class="block font-bebas text-xl md:text-2xl text-gray-500 mb-2 tracking-wide">E-MAIL *</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        class="custom-input w-full py-4 text-lg md:text-xl font-sans text-white focus:outline-none placeholder-gray-800"
-                        required
-                        value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>"
-                        placeholder="ihre.email@adresse.at"
-                    >
-                </div>
+                    <div>
+                        <label for="subject" class="form-label">Betreff *</label>
+                        <input
+                            type="text"
+                            id="subject"
+                            name="subject"
+                            class="form-input"
+                            required
+                            value="<?php echo isset($subject) ? htmlspecialchars($subject) : ''; ?>"
+                            placeholder="Kurzbeschreibung"
+                        >
+                    </div>
 
-                <div class="form-input-container">
-                    <label for="subject" class="block font-bebas text-xl md:text-2xl text-gray-500 mb-2 tracking-wide">BETREFF *</label>
-                    <input
-                        type="text"
-                        id="subject"
-                        name="subject"
-                        class="custom-input w-full py-4 text-lg md:text-xl font-sans text-white focus:outline-none placeholder-gray-800"
-                        required
-                        value="<?php echo isset($subject) ? htmlspecialchars($subject) : ''; ?>"
-                        placeholder="Kurz zusammengefasst"
-                    >
-                </div>
+                    <div>
+                        <label for="message" class="form-label">Nachricht *</label>
+                        <textarea
+                            id="message"
+                            name="message"
+                            class="form-textarea"
+                            required
+                            placeholder="Ihre Nachricht"
+                        ><?php echo isset($message) ? htmlspecialchars($message) : ''; ?></textarea>
+                    </div>
 
-                <div class="form-input-container">
-                    <label for="message" class="block font-bebas text-xl md:text-2xl text-gray-500 mb-2 tracking-wide">NACHRICHT *</label>
-                    <textarea
-                        id="message"
-                        name="message"
-                        rows="6"
-                        class="custom-input w-full py-4 text-lg md:text-xl font-sans text-white focus:outline-none placeholder-gray-800 resize-y min-h-[150px]"
-                        required
-                        placeholder="Ihre Nachricht an uns..."
-                    ><?php echo isset($message) ? htmlspecialchars($message) : ''; ?></textarea>
-                </div>
+                    <div class="btn-row">
+                        <button type="submit" class="btn btn-primary">Nachricht senden</button>
+                    </div>
 
-                <div class="pt-8">
-                    <button type="submit" class="btn-glitch w-full md:w-auto bg-white text-black font-bebas text-2xl md:text-3xl px-12 py-4 hover:bg-transparent hover:text-white border-2 border-white transition-all uppercase tracking-widest">
-                        Nachricht Senden
-                    </button>
-                    <p class="mt-4 text-xs font-mono text-gray-600">
-                        * PFLICHTFELDER
-                    </p>
-                </div>
-
-            </form>
-
+                    <p class="note mono">* Pflichtfelder</p>
+                </form>
+            </section>
         </div>
-    </main>
+    </div>
+</main>
 
-    <?php
+<?php
 site_render_footer([
     'links' => [
         ['href' => 'index.php', 'label' => 'Dashboard'],
         ['href' => 'impressum.php', 'label' => 'Impressum'],
-        ['href' => 'mailingliste.php', 'label' => 'Newsletter', 'class' => 'text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors underline']
+        ['href' => 'mailingliste.php', 'label' => 'Newsletter']
     ],
     'rightLines' => [
         'QUELLE: PARLAMENT.GV.AT',
