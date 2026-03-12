@@ -5,9 +5,9 @@ ini_set('display_errors', 1);
 $url = 'https://www.parlament.gv.at/Filter/api/filter/data/101?js=eval&showAll=true';
 
 $payload = [
-    "GP_CODE" => ["XXVIII"],
+    "GP_CODE" => ["XXVIII", "XXVII", "XXVI", "XXV", "BR"],
     "VHG" => ["J_JPR_M"],
-    "DOKTYP" => ["J"]
+    "DOKTYP" => ["J", "JPR"]
 ];
 
 $ch = curl_init($url);
@@ -57,40 +57,24 @@ if ($jsonError !== JSON_ERROR_NONE) {
                         echo "  First row [4] (date): " . ($value[0][4] ?? 'N/A') . "\n";
                         echo "  First row [6] (title): " . substr($value[0][6] ?? 'N/A', 0, 100) . "\n";
 
-                        // Find NGO-related entries from today
+                        // Find entries from today
                         $today = date('d.m.Y');
                         echo "\n  Looking for entries from today ($today)...\n";
 
                         $todayEntries = 0;
-                        $ngoEntries = 0;
-                        $todayNgoEntries = 0;
+                        $totalEntries = count($value);
 
                         foreach ($value as $row) {
                             $dateStr = $row[4] ?? '';
-                            $title = strtolower($row[6] ?? '');
-
-                            $hasNGO = (
-                                strpos($title, 'ngo') !== false ||
-                                strpos($title, 'nicht-regierungsorganisation') !== false ||
-                                strpos($title, 'nonprofit') !== false
-                            );
-
-                            if ($hasNGO) {
-                                $ngoEntries++;
-                            }
 
                             if ($dateStr === $today) {
                                 $todayEntries++;
-                                if ($hasNGO) {
-                                    $todayNgoEntries++;
-                                    echo "    Found: $dateStr - " . substr($row[6], 0, 80) . "...\n";
-                                }
+                                echo "    Found: $dateStr - " . substr($row[6] ?? 'N/A', 0, 80) . "...\n";
                             }
                         }
 
                         echo "\n  Total entries today: $todayEntries\n";
-                        echo "  Total NGO entries (all time): $ngoEntries\n";
-                        echo "  NGO entries from today: $todayNgoEntries\n";
+                        echo "  Total entries (all time): $totalEntries\n";
                     }
                 }
             } else {

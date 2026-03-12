@@ -1,7 +1,7 @@
 <?php
 // ==========================================
-// NGO ANFRAGEN TRACKER
-// Single Purpose: Track NGO-related parliamentary inquiries
+// PARLIAMENTARY INQUIRY TRACKER
+// Purpose: Track all parliamentary inquiries
 // ==========================================
 
 // COMPREHENSIVE ERROR LOGGING
@@ -40,23 +40,6 @@ set_exception_handler(function($exception) {
 });
 
 define('PARL_API_URL', 'https://www.parlament.gv.at/Filter/api/filter/data/101?js=eval&showAll=true');
-
-// NGO-related keywords for filtering
-define('NGO_KEYWORDS', [
-    'ngo',
-    'ngos',
-    "ngo-business",
-    "NGO-Business",
-    "NGO business",
-    "ngo business",
-    'nicht-regierungsorganisation',
-    'nicht regierungsorganisation',
-    'nichtregierungsorganisation',
-    'non-governmental',
-    'nonprofit',
-    'non-profit',
-    'ehrenamtlich'
-]);
 
 // German stopwords - Füllwörter die wir NICHT in den Kampfbegriffen haben wollen
 define('STOPWORDS', [
@@ -124,7 +107,7 @@ function fetchAllRows($gpCodes) {
     $payload = [
         "GP_CODE" => $gpCodes,
         "VHG" => ["J_JPR_M"],
-        "DOKTYP" => ["J"]
+        "DOKTYP" => ["J", "JPR"]
     ];
 
     $ch = curl_init(PARL_API_URL);
@@ -142,16 +125,6 @@ function fetchAllRows($gpCodes) {
     return json_decode($response, true);
 }
 
-function matchesNGOKeywords($text) {
-    $text = mb_strtolower($text);
-    foreach (NGO_KEYWORDS as $keyword) {
-        if (strpos($text, mb_strtolower($keyword)) !== false) {
-            return true;
-        }
-    }
-    return false;
-}
-
 // ==========================================
 // TIME RANGE CALCULATION
 // ==========================================
@@ -164,47 +137,47 @@ switch ($timeRange) {
     case '1week':
         $cutoffDate->modify('-1 week');
         $rangeLabel = 'Letzte Woche';
-        $gpCodes = ['XXVIII'];
+        $gpCodes = ['XXVIII', 'BR'];
         break;
     case '1month':
         $cutoffDate->modify('-1 month');
         $rangeLabel = 'Letzter Monat';
-        $gpCodes = ['XXVIII'];
+        $gpCodes = ['XXVIII', 'BR'];
         break;
     case '3months':
         $cutoffDate->modify('-3 months');
         $rangeLabel = 'Letzte 3 Monate';
-        $gpCodes = ['XXVIII'];
+        $gpCodes = ['XXVIII', 'BR'];
         break;
     case '6months':
         $cutoffDate->modify('-6 months');
         $rangeLabel = 'Letzte 6 Monate';
-        $gpCodes = ['XXVIII', 'XXVII'];
+        $gpCodes = ['XXVIII', 'XXVII', 'BR'];
         break;
     case '12months':
         $cutoffDate->modify('-12 months');
         $rangeLabel = 'Letzte 12 Monate';
-        $gpCodes = ['XXVIII', 'XXVII'];
+        $gpCodes = ['XXVIII', 'XXVII', 'BR'];
         break;
     case '1year':
         $cutoffDate->modify('-1 year');
         $rangeLabel = 'Letztes Jahr';
-        $gpCodes = ['XXVIII', 'XXVII'];
+        $gpCodes = ['XXVIII', 'XXVII', 'BR'];
         break;
     case '3years':
         $cutoffDate->modify('-3 years');
         $rangeLabel = 'Letzte 3 Jahre';
-        $gpCodes = ['XXVIII', 'XXVII', 'XXVI'];
+        $gpCodes = ['XXVIII', 'XXVII', 'XXVI', 'BR'];
         break;
     case '5years':
         $cutoffDate->modify('-5 years');
         $rangeLabel = 'Letzte 5 Jahre';
-        $gpCodes = ['XXVIII', 'XXVII', 'XXVI', 'XXV'];
+        $gpCodes = ['XXVIII', 'XXVII', 'XXVI', 'XXV', 'BR'];
         break;
     default:
         $cutoffDate->modify('-12 months');
         $rangeLabel = 'Letzte 12 Monate';
-        $gpCodes = ['XXVIII', 'XXVII'];
+        $gpCodes = ['XXVIII', 'XXVII', 'BR'];
 }
 
 // ==========================================
@@ -213,7 +186,7 @@ switch ($timeRange) {
 
 // CACHE KEY: Unique identifier for this specific data request
 // Includes GP codes and cutoff date to ensure different time ranges are cached separately
-$cacheKey = 'ngo_data_' . md5(serialize($gpCodes) . $cutoffDate->format('Y-m-d'));
+$cacheKey = 'inquiry_data_v2_' . md5(serialize($gpCodes) . $cutoffDate->format('Y-m-d'));
 
 // Try to get cached data first - this dramatically speeds up repeated requests
 $cachedData = $cache->get($cacheKey);
@@ -246,16 +219,9 @@ if ($cachedData !== null) {
         foreach ($apiResponse['rows'] as $row) {
         $rowDateStr = $row[4] ?? '';
         $rowTitle = $row[6] ?? '';
-        $rowTopics = $row[22] ?? '[]';
         $rowPartyCode = getPartyCode($row[21] ?? '[]');
         $rowLink = $row[14] ?? '';
         $rowNumber = $row[7] ?? '';
-
-        // Check if matches NGO keywords
-        $searchableText = $rowTitle . ' ' . $rowTopics;
-        if (!matchesNGOKeywords($searchableText)) {
-            continue;
-        }
 
         // Parse date
         $rowDate = DateTime::createFromFormat('d.m.Y', $rowDateStr);
@@ -488,9 +454,9 @@ $partyMap = [
 
     <?php
     // SEO-Optimized Dynamic Title
-    $seoTitle = "\"NGO Business\" Tracker Österreich | " . $rangeLabel . " | Parlamentarische Anfragen Live";
-    $seoDescription = "Analyse des Begriffs 'NGO Business' im Parlament. Tracking der Strategie, Ressourcenbindung und Skandalisierung durch parlamentarische Anfragen in Österreich.";
-    $seoKeywords = "ngo business, ngo business österreich, ngo anfragen, parlamentarische anfragen ngo, ngo business tracker, framing ngo, ngo business strategie, parlamentsanfragen";
+    $seoTitle = "Parlaments-Anfragen Dashboard Österreich | " . $rangeLabel . " | Parlamentarische Anfragen Live";
+    $seoDescription = "Tagesaktuelles Monitoring parlamentarischer Anfragen im österreichischen Parlament.";
+    $seoKeywords = "parlamentarische anfragen, nationalrat, bundesrat, anfragen dashboard, politik monitoring österreich";
     $currentUrl = "https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     $canonicalUrl = "https://" . $_SERVER['HTTP_HOST'] . strtok($_SERVER["REQUEST_URI"], '?');
     ?>
@@ -500,7 +466,7 @@ $partyMap = [
     <meta name="title" content="<?php echo htmlspecialchars($seoTitle); ?>">
     <meta name="description" content="<?php echo htmlspecialchars($seoDescription); ?>">
     <meta name="keywords" content="<?php echo htmlspecialchars($seoKeywords); ?>">
-    <meta name="author" content="&quot;NGO Business&quot; Tracker - Anfragen Dashboard">
+    <meta name="author" content="Parlaments-Anfragen Dashboard">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <meta name="language" content="German">
     <meta name="revisit-after" content="1 days">
@@ -514,7 +480,7 @@ $partyMap = [
     <link rel="canonical" href="<?php echo htmlspecialchars($canonicalUrl); ?>">
 
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="&quot;NGO Business&quot; Tracker - Anfragen Dashboard">
+    <meta property="og:site_name" content="Parlaments-Anfragen Dashboard">
     <meta property="og:url" content="<?php echo htmlspecialchars($currentUrl); ?>">
     <meta property="og:title" content="<?php echo htmlspecialchars($seoTitle); ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars($seoDescription); ?>">
@@ -528,8 +494,8 @@ $partyMap = [
 
     <meta name="theme-color" content="#111111">
     <meta name="msapplication-TileColor" content="#111111">
-    <meta name="application-name" content="&quot;NGO Business&quot; Tracker">
-    <meta name="apple-mobile-web-app-title" content="&quot;NGO Business&quot; Tracker">
+    <meta name="application-name" content="Parlaments-Anfragen Dashboard">
+    <meta name="apple-mobile-web-app-title" content="Parlaments-Anfragen Dashboard">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
@@ -619,20 +585,20 @@ $partyMap = [
         "@graph": [
             {
                 "@type": "Organization",
-                "name": "\"NGO Business\" Tracker - Anfragen Dashboard",
+                "name": "Parlaments-Anfragen Dashboard",
                 "url": "<?php echo htmlspecialchars($canonicalUrl); ?>",
                 "logo": "<?php echo htmlspecialchars($canonicalUrl); ?>",
-                "description": "Echtzeit-Tracking und Analyse von NGO-bezogenen parlamentarischen Anfragen im österreichischen Parlament",
+                "description": "Echtzeit-Tracking und Analyse parlamentarischer Anfragen im österreichischen Parlament",
                 "areaServed": {
                     "@type": "Country",
                     "name": "Österreich"
                 },
-                "knowsAbout": ["NGO Business", "Parlamentarische Anfragen", "Transparenz", "Politisches Monitoring", "NGO Tracking"],
-                "keywords": "ngo business, ngo business österreich, parlamentarische anfragen, ngo transparenz"
+                "knowsAbout": ["Parlamentarische Anfragen", "Transparenz", "Politisches Monitoring", "Nationalrat", "Bundesrat"],
+                "keywords": "parlamentarische anfragen, nationalrat, bundesrat, politik monitoring"
             },
             {
                 "@type": "WebSite",
-                "name": "\"NGO Business\" Tracker",
+                "name": "Parlaments-Anfragen Dashboard",
                 "url": "<?php echo htmlspecialchars($canonicalUrl); ?>",
                 "description": "<?php echo htmlspecialchars($seoDescription); ?>",
                 "inLanguage": "de-AT",
@@ -651,8 +617,8 @@ $partyMap = [
                 },
                 "about": {
                     "@type": "Thing",
-                    "name": "NGO Business Tracking",
-                    "description": "Monitoring und Analyse von NGO-bezogenen parlamentarischen Anfragen in Österreich"
+                    "name": "Parlamentarische Anfragen",
+                    "description": "Monitoring und Analyse parlamentarischer Anfragen in Österreich"
                 },
                 "datePublished": "<?php echo date('c', strtotime('-1 year')); ?>",
                 "dateModified": "<?php echo date('c'); ?>",
@@ -660,13 +626,13 @@ $partyMap = [
             },
             {
                 "@type": "Dataset",
-                "name": "NGO Business Parlamentarische Anfragen <?php echo $rangeLabel; ?>",
-                "description": "Echtzeit-Datensatz von <?php echo $totalCount; ?> NGO-bezogenen parlamentarischen Anfragen aus dem österreichischen Parlament (<?php echo $rangeLabel; ?>)",
+                "name": "Parlamentarische Anfragen <?php echo $rangeLabel; ?>",
+                "description": "Echtzeit-Datensatz von <?php echo $totalCount; ?> parlamentarischen Anfragen aus dem österreichischen Parlament (<?php echo $rangeLabel; ?>)",
                 "url": "<?php echo htmlspecialchars($currentUrl); ?>",
                 "keywords": "<?php echo htmlspecialchars($seoKeywords); ?>",
                 "creator": {
                     "@type": "Organization",
-                    "name": "\"NGO Business\" Tracker"
+                    "name": "Parlaments-Anfragen Dashboard"
                 },
                 "datePublished": "<?php echo date('c', strtotime('-1 year')); ?>",
                 "dateModified": "<?php echo date('c'); ?>",
@@ -697,7 +663,7 @@ $partyMap = [
                     {
                         "@type": "ListItem",
                         "position": 2,
-                        "name": "NGO Business Anfragen <?php echo $rangeLabel; ?>",
+                        "name": "Parlamentarische Anfragen <?php echo $rangeLabel; ?>",
                         "item": "<?php echo htmlspecialchars($currentUrl); ?>"
                     }
                 ]
@@ -716,7 +682,7 @@ $partyMap = [
             
             <span class="font-bebas text-xl md:text-2xl tracking-widest text-white mt-1">
                 <span class="md:hidden">NBT</span>
-                <span class="hidden md:inline">NGO-Business Tracker</span>
+                <span class="hidden md:inline">Parlaments-Anfragen Dashboard</span>
             </span>
         </a>
 </header>
@@ -728,19 +694,19 @@ $partyMap = [
                 <header class="mb-6 md:mb-8">
                     <span class="inline-block border-b border-gray-600 pb-1 mb-4 md:mb-6 text-[10px] md:text-xs font-mono text-gray-400 uppercase tracking-[0.2em]">Die Analyse</span>
                     <h1 class="text-5xl sm:text-6xl md:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl text-white leading-[0.9] mb-4 md:mb-6 break-words tracking-tight" style="font-family: 'Bebas Neue', sans-serif;">
-                        Das "NGO-Business"<br>Narrativ
+                        Parlamentarische<br>Anfragen im Fokus
                     </h1>
                 </header>
 
                 <div class="space-y-4 md:space-y-6 max-w-3xl mx-auto text-left md:text-center px-4">
                     <p class="text-sm md:text-base lg:text-lg text-gray-300 font-sans leading-relaxed">
-                        Das Parlament wird mit Anfragen mit dem Begriff "NGO-Business" im Titel geflutet. Seit <?php echo $earliestDateFormatted; ?> sind <?php echo number_format($totalCount); ?> Anfragen zum Thema NGOs, fast immer mit dem Begriff "NGO-Business" versehen, eingegangen
+                        Dieses Dashboard zeigt alle parlamentarischen Anfragen im ausgewählten Zeitraum. Seit <?php echo $earliestDateFormatted; ?> wurden <?php echo number_format($totalCount); ?> Anfragen erfasst.
                     </p>
 
                     <p class="text-sm md:text-base lg:text-lg text-gray-300 font-sans leading-relaxed">
-                       Warum? Wichtige NGO-Arbeit scheint bewusst in den Kontext von Steuergeld-Verschwendung gerückt zu werden, um die Arbeit von Non-Profit-Organisationen pauschal zu diskreditieren.
+                       Die Daten werden ungefiltert aus dem Open-Data-Feed des Parlaments geladen und nach Datum, Partei, Status und Begriffen visualisiert.
                         <br><br>
-                        <span class="text-white"> Wir decken auf, was es mit den Anfragen auf sich hat.</span>
+                        <span class="text-white"> So wird tägliche Anfrage-Aktivität transparent sichtbar.</span>
                     </p>
                 </div>
             </article>
@@ -824,7 +790,7 @@ $partyMap = [
                     <div class="h-[250px] sm:h-[300px] md:h-[350px] w-full relative">
                         <canvas id="timelineChart" 
                                 role="img" 
-                                aria-label="Liniendiagramm: Zeitlicher Verlauf der NGO Business Anfragen"
+                                aria-label="Liniendiagramm: Zeitlicher Verlauf parlamentarischer Anfragen"
                                 aria-describedby="timeline-desc"></canvas>
                         <p id="timeline-desc" class="sr-only">Diagramm zeigt Verlauf der Anfragen über <?php echo $rangeLabel; ?>.</p>
                     </div>
@@ -1011,10 +977,9 @@ $partyMap = [
                     </h3>
                     <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
                         <p class="text-gray-400 leading-relaxed font-sans" itemprop="text">
-                            Die massenhafte Verwendung des Begriffs „NGO Business" könnte auf eine bewusste politische Strategie hindeuten. 
-                            Durch hunderte nahezu identische Anfragen wird ein Narrativ erzeugt, das NGO Arbeit mit 
-                            Steuergeldverschwendung, Ideologie und Missbrauch öffentlicher Mittel verknüpft. 
-                            Ziel ist weniger Aufklärung als vielmehr Delegitimierung.
+                            Parlamentarische Anfragen werden häufig auch strategisch eingesetzt, um Themen und Botschaften in den öffentlichen Diskurs zu bringen.
+                            Wiederholte, ähnlich formulierte Anfragen können Wahrnehmungen verstärken und politische Narrative prägen.
+                            Das Dashboard hilft dabei, solche Muster datenbasiert und über Zeit sichtbar zu machen.
                         </p>
                     </div>
                 </div>
@@ -1059,9 +1024,8 @@ $partyMap = [
                         </p>
                         
                         <p class="text-gray-300 leading-relaxed mt-4" itemprop="text">
-                            Im Fall von „NGO-Business" entsteht durch hunderte parlamentarische Anfragen eine künstliche Verbindung 
-                            zwischen NGOs und negativ konnotierten Begriffen wie Steuergeld, Ideologie oder Missbrauch, 
-                            unabhängig davon, ob es reale Probleme gibt.
+                            In parlamentarischen Anfragen können Begriffe durch häufige Wiederholung dauerhaft mit bestimmten Deutungen verknüpft werden,
+                            unabhängig davon, ob die zugrunde liegenden Sachverhalte im gleichen Ausmaß bestehen.
                         </p>
 
                         <p class="text-gray-300 leading-relaxed mt-4" itemprop="text">
@@ -1089,11 +1053,11 @@ $partyMap = [
             <h3 class="modal-title">Zeitlicher Verlauf</h3>
             <div class="modal-body">
                 <p><strong>Was zeigt diese Grafik?</strong></p>
-                <p>Diese Grafik zeigt, wie viele NGO-bezogene parlamentarische Anfragen im gewählten Zeitraum gestellt wurden.</p>
+                <p>Diese Grafik zeigt, wie viele parlamentarische Anfragen im gewählten Zeitraum gestellt wurden.</p>
                 <p><strong>Wie wird sie berechnet?</strong></p>
-                <p>Für jeden Tag oder Monat (je nach gewähltem Zeitraum) werden alle Anfragen gezählt, die NGO-relevante Begriffe enthalten. Die Linie zeigt die Entwicklung über die Zeit.</p>
+                <p>Für jeden Tag oder Monat (je nach gewähltem Zeitraum) werden alle Anfragen gezählt. Die Linie zeigt die Entwicklung über die Zeit.</p>
                 <p><strong>Was bedeutet das?</strong></p>
-                <p>Spitzen in der Kurve zeigen Phasen besonders intensiver Anfrage-Aktivität. So wird sichtbar, wann das Thema "NGO Business" verstärkt im Parlament thematisiert wurde.</p>
+                <p>Spitzen in der Kurve zeigen Phasen besonders intensiver Anfrage-Aktivität.</p>
             </div>
         </div>
     </div>
@@ -1106,9 +1070,9 @@ $partyMap = [
                 <p><strong>Was zeigt diese Grafik?</strong></p>
                 <p>Diese Liste zeigt die häufigsten politisch aufgeladenen Begriffe aus den Anfragen und welche Partei diese am meisten verwendet.</p>
                 <p><strong>Wie wird sie berechnet?</strong></p>
-                <p>Alle Wörter aus den Anfragen werden analysiert. Neutrale Begriffe wie "Österreich", "Verein" oder "Förderung" werden herausgefiltert. Übrig bleiben gezielte Schlagwörter wie "Steuergeldmillionen", "LGBTIQ-Maßnahmen" oder "NGO-Business". Für jedes Wort wird gezählt, welche Partei es wie oft verwendet hat.</p>
+                <p>Alle Wörter aus den Anfragen werden analysiert. Neutrale Begriffe wie "Österreich", "Verein" oder "Förderung" werden herausgefiltert. Übrig bleiben aussagekräftige Schlagwörter. Für jedes Wort wird gezählt, welche Partei es wie oft verwendet hat.</p>
                 <p><strong>Was bedeutet das?</strong></p>
-                <p>Die Liste zeigt, mit welchen Begriffen NGOs gezielt in einen bestimmten Kontext gerückt werden. Die "Dominanz" zeigt, welche Partei ein Wort besonders häufig nutzt, um ihr Narrativ zu formen.</p>
+                <p>Die Liste zeigt, welche Begriffe in Anfragen dominieren. Die "Dominanz" zeigt, welche Partei ein Wort besonders häufig nutzt.</p>
             </div>
         </div>
     </div>
@@ -1149,15 +1113,15 @@ $partyMap = [
                 <div class="max-w-md">
                     <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-wider">Über das Projekt</h3>
                     <p class="text-xs text-gray-500 leading-relaxed font-sans mb-4">
-                        Der NGO Business Tracker analysiert parlamentarische Anfragen im österreichischen Nationalrat, die gezielt zum Thema NGOs gestellt werden.
+                        Das Parlaments-Anfragen Dashboard analysiert parlamentarische Anfragen aus Nationalrat und Bundesrat.
                         <br><br>
-                        Er macht sichtbar, wie oft, von wem und in welchen Mustern das Framing gepusht wird.
+                        Es macht sichtbar, wie oft, von wem und in welchen Mustern Anfragen eingebracht werden.
                     </p>
                     <div class="text-xs text-yellow-600 leading-relaxed font-sans mb-4 italic">
                         Hinweis: Diese Plattform ist experimentell. Fehler können vorkommen.
                     </div>
                     <div class="text-xs font-mono text-gray-600">
-                          © <?php echo date('Y'); ?> "NGO BUSINESS" TRACKER
+                          © <?php echo date('Y'); ?> PARLAMENTS-ANFRAGEN DASHBOARD
                     </div>
                     <div class="mt-2 space-x-4">
                         <a href="impressum.php" class="text-xs font-mono text-gray-500 hover:text-white transition-colors underline">Impressum</a>
@@ -1179,7 +1143,7 @@ $partyMap = [
     </footer>
 
     <script>
-        console.log('=== NGO TRACKER DEBUG START ===');
+        console.log('=== PARLIAMENT INQUIRY TRACKER DEBUG START ===');
 
         // Initialize charts function - called after Chart.js loads
         function initializeCharts() {
@@ -1487,7 +1451,7 @@ $partyMap = [
             }
 
             console.log('✅ All charts initialized successfully!');
-            console.log('=== NGO TRACKER DEBUG END ===');
+            console.log('=== PARLIAMENT INQUIRY TRACKER DEBUG END ===');
 
             // Modal Functions
             window.openModal = function(modalId) {
