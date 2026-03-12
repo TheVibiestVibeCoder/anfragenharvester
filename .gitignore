@@ -1,0 +1,23 @@
+# Cache files (but keep directory)
+cache/*.dat
+!cache/.gitkeep
+
+# PHP error logs
+php_errors.log
+email-sender-errors.log
+
+# Mailing list database and runtime files
+mailinglist.db
+mailinglist.db-shm
+mailinglist.db-wal
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
