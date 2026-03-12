@@ -251,17 +251,6 @@
                     </h1>
                 </header>
 
-                <div class="hero-description space-y-4 md:space-y-6">
-                    <p>
-                        Dieses Dashboard zeigt alle parlamentarischen Anfragen im ausgewählten Zeitraum. Seit <?php echo $earliestDateFormatted; ?> wurden <?php echo number_format($totalCount); ?> Anfragen erfasst.
-                    </p>
-
-                    <p>
-                       Die Daten werden ungefiltert aus dem Open-Data-Feed des Parlaments geladen und nach Datum, Partei, Status und Begriffen visualisiert.
-                        <br><br>
-                        <span class="hero-description-highlight">So wird tägliche Anfrage-Aktivität transparent sichtbar.</span>
-                    </p>
-                </div>
             </article>
         </div>
 
