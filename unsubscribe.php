@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/views/partials/site_chrome.php'; ?>
 <?php
 // ==========================================
 // NEWSLETTER UNSUBSCRIBE PAGE
@@ -142,19 +143,15 @@ if (!$error && $_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <!-- Header -->
-    <header class="bg-black border-b border-white py-6">
-        <div class="container-custom">
-            <div class="flex items-center justify-between">
-                <a href="index.php" class="text-2xl font-bebas tracking-wider hover:text-gray-300 transition-colors">
-                    "NGO BUSINESS" TRACKER
-                </a>
-                <nav class="flex gap-6">
-                    <a href="index.php" class="text-sm font-mono text-gray-400 hover:text-white transition-colors">Dashboard</a>
-                    <a href="mailingliste.php" class="text-sm font-mono text-gray-400 hover:text-white transition-colors">Newsletter</a>
-                </nav>
-            </div>
-        </div>
-    </header>
+    <?php
+site_render_bar_header([
+    'brandText' => 'PARLAMENTS-ANFRAGEN DASHBOARD',
+    'navLinks' => [
+        ['href' => 'index.php', 'label' => 'Dashboard'],
+        ['href' => 'mailingliste.php', 'label' => 'Newsletter']
+    ]
+]);
+?>
 
     <!-- Main Content -->
     <main class="flex-1 py-12 md:py-20">
@@ -254,33 +251,20 @@ if (!$error && $_SERVER['REQUEST_METHOD'] === 'POST') {
     </main>
 
     <!-- Footer -->
-    <footer class="bg-black border-t border-white py-8 md:py-12 mt-auto">
-        <div class="container-custom">
-            <div class="flex flex-col md:flex-row justify-between items-start gap-8">
-                <div class="max-w-md">
-                    <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-wider">Über das Projekt</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed font-sans mb-4">
-                        Der NGO Business Tracker analysiert parlamentarische Anfragen im österreichischen Nationalrat, die gezielt zum Thema NGOs gestellt werden.
-                    </p>
-                    <div class="text-xs font-mono text-gray-600">
-                          © <?php echo date('Y'); ?> "NGO BUSINESS" TRACKER
-                    </div>
-                    <div class="mt-2 space-x-4">
-                        <a href="index.php" class="text-xs font-mono text-gray-500 hover:text-white transition-colors underline">Dashboard</a>
-                        <a href="impressum.php" class="text-xs font-mono text-gray-500 hover:text-white transition-colors underline">Impressum</a>
-                        <a href="kontakt.php" class="text-xs font-mono text-gray-500 hover:text-white transition-colors underline">Kontakt</a>
-                    </div>
-                </div>
-
-                <div class="text-left md:text-right w-full md:w-auto">
-                    <div class="text-xs font-mono text-gray-500 mb-2">NEWSLETTER SERVICE</div>
-                    <div class="flex items-center justify-start md:justify-end gap-2 mt-4">
-                        <div class="w-2 h-2 bg-green-600 rounded-full"></div>
-                        <span class="text-xs font-mono text-green-600">SYSTEM OPERATIONAL</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </footer>
+    <?php
+site_render_footer([
+    'aboutHtml' => 'Das Parlaments-Anfragen Dashboard analysiert parlamentarische Anfragen aus Nationalrat und Bundesrat.',
+    'noticeHtml' => null,
+    'links' => [
+        ['href' => 'index.php', 'label' => 'Dashboard'],
+        ['href' => 'impressum.php', 'label' => 'Impressum'],
+        ['href' => 'kontakt.php', 'label' => 'Kontakt']
+    ],
+    'rightLines' => [
+        'NEWSLETTER SERVICE'
+    ]
+]);
+?>
 </body>
 </html>
+

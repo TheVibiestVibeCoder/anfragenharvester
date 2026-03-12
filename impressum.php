@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/views/partials/site_chrome.php'; ?>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -83,17 +84,7 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
-    <header class="w-full absolute top-0 z-50 bg-transparent">
-    <div class="container mx-auto px-6 h-16 flex justify-between items-center">
-        <a href="index.php" class="flex items-center gap-3 group">
-            <div class="w-3 h-3 bg-white group-hover:bg-green-500 transition-colors duration-300"></div>
-            
-            <span class="font-bebas text-xl md:text-2xl tracking-widest text-white mt-1">
-                <span class="md:hidden">NBT</span>
-                <span class="hidden md:inline">NGO-Business Tracker</span>
-            </span>
-        </a>
-</header>
+        <?php site_render_floating_header(); ?>
 
     <main class="flex-grow pt-32 pb-20 px-6">
         <div class="container mx-auto max-w-2xl">
@@ -178,40 +169,19 @@
 
     </main>
 
-    <footer class="bg-black border-t border-white py-8 md:py-12 mt-auto">
-        <div class="container-custom">
-            <div class="flex flex-col md:flex-row justify-between items-start gap-8">
-                <div class="max-w-md">
-                    <h3 class="text-sm font-bold text-white mb-4 uppercase tracking-wider">Über das Projekt</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed font-sans mb-4">
-                        Der NGO Business Tracker analysiert parlamentarische Anfragen im österreichischen Nationalrat, die gezielt zum Thema NGOs gestellt werden.
-                        <br><br>
-                        Er macht sichtbar, wie oft, von wem und in welchen Mustern das Framing gepusht wird.
-                    </p>
-                    <div class="text-xs text-yellow-600 leading-relaxed font-sans mb-4 italic">
-                        Hinweis: Diese Plattform ist experimentell. Fehler können vorkommen.
-                    </div>
-                    <div class="text-xs font-mono text-gray-600">
-                          © <?php echo date('Y'); ?> "NGO BUSINESS" TRACKER
-                    </div>
-                    <div class="mt-2 space-x-4">
-                        <a href="index.php" class="text-xs font-mono text-gray-500 hover:text-white transition-colors underline">Dashboard</a>
-                        <a href="kontakt.php" class="text-xs font-mono text-gray-500 hover:text-white transition-colors underline">Kontakt</a>
-                        <a href="mailingliste.php" class="text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors underline">📧 Newsletter</a>
-                    </div>
-                </div>
-
-                <div class="text-left md:text-right w-full md:w-auto">
-                    <div class="text-xs font-mono text-gray-500 mb-2">QUELLE: PARLAMENT.GV.AT</div>
-                    <div class="text-xs font-mono text-gray-500 mb-2">LAST UPDATE: <?php echo date('d.m.Y H:i'); ?></div>
-                    <div class="flex items-center justify-start md:justify-end gap-2 mt-4">
-                        <div class="w-2 h-2 bg-green-600 rounded-full"></div>
-                        <span class="text-xs font-mono text-green-600">SYSTEM OPERATIONAL</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </footer>
+        <?php
+    site_render_footer([
+        'links' => [
+            ['href' => 'index.php', 'label' => 'Dashboard'],
+            ['href' => 'kontakt.php', 'label' => 'Kontakt'],
+            ['href' => 'mailingliste.php', 'label' => 'Newsletter', 'class' => 'text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors underline']
+        ],
+        'rightLines' => [
+            'QUELLE: PARLAMENT.GV.AT',
+            'LAST UPDATE: ' . date('d.m.Y H:i')
+        ]
+    ]);
+    ?>
 
 </body>
 </html>

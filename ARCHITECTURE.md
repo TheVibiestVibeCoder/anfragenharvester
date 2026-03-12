@@ -33,6 +33,9 @@ This repository is now split into **controller**, **service**, and **view** laye
 - `views/dashboard.php`
   - Full dashboard HTML/JS template.
   - Contains only presentation concerns.
+- `views/partials/site_chrome.php`
+  - Shared UI chrome for secondary pages:
+  - floating header, bar header, and configurable footer.
 
 ## Scripts Using Shared Modules
 
@@ -40,6 +43,17 @@ This repository is now split into **controller**, **service**, and **view** laye
   - Uses shared API and parsing helpers from `app/`.
 - `test-api.php`
   - Uses shared API helper instead of custom CURL code.
+
+## Shared Page Chrome
+
+The following pages now use shared header/footer rendering from `views/partials/site_chrome.php`:
+
+- `impressum.php`
+- `kontakt.php`
+- `mailingliste.php`
+- `unsubscribe.php`
+
+This allows global redesign of these common elements from one place.
 
 ## Redesign Guidance
 
