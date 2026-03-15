@@ -953,6 +953,157 @@ body.dashboard-page {
 
 .result-item:hover { background: #f8f7f2; }
 
+.akten-meta-block {
+    margin-top: 0.7rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(29, 47, 38, 0.16);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.74);
+    display: grid;
+    gap: 0.65rem;
+}
+
+.akten-meta-line {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.akten-meta-label {
+    color: var(--freda-muted);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.akten-meta-value {
+    color: var(--freda-ink);
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.akten-status-pill {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    border-radius: 999px;
+    border: 1px solid rgba(29, 47, 38, 0.2);
+    padding: 0.16rem 0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.akten-stages {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.akten-stage-item {
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.34rem 0.45rem;
+    border-radius: 8px;
+    border: 1px solid rgba(29, 47, 38, 0.14);
+    background: #f8f6ee;
+}
+
+.akten-stage-item.is-done {
+    border-color: rgba(23, 77, 55, 0.35);
+    background: rgba(47, 127, 73, 0.08);
+}
+
+.akten-stage-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: #bec7be;
+}
+
+.akten-stage-item.is-done .akten-stage-dot {
+    background: #2f7f49;
+}
+
+.akten-stage-label {
+    color: var(--freda-ink);
+    font-size: 0.78rem;
+    line-height: 1.25;
+}
+
+.akten-stage-date {
+    color: var(--freda-muted);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+}
+
+.akten-chip-row {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.akten-chip-label {
+    color: var(--freda-muted);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.akten-chip-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.akten-chip {
+    border: 1px solid rgba(29, 47, 38, 0.18);
+    background: #ffffff;
+    border-radius: 999px;
+    padding: 0.2rem 0.5rem;
+    color: var(--freda-ink-soft);
+    font-size: 0.7rem;
+    line-height: 1.2;
+}
+
+.akten-person-list {
+    display: grid;
+    gap: 0.32rem;
+}
+
+.akten-person-item {
+    display: grid;
+    gap: 0.12rem;
+    border: 1px solid rgba(29, 47, 38, 0.16);
+    border-radius: 8px;
+    background: #fff;
+    padding: 0.35rem 0.5rem;
+}
+
+.akten-person-main {
+    color: var(--freda-ink);
+    font-size: 0.78rem;
+    line-height: 1.25;
+}
+
+.akten-person-fn {
+    color: var(--freda-muted);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.03em;
+}
+
+.akten-person-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+    color: var(--freda-muted);
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+}
+
 .pag-btn {
     border-radius: 999px;
     border-color: rgba(29, 47, 38, 0.18);

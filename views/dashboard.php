@@ -428,6 +428,34 @@
                     </div>
 
                     <?php foreach ($displayResults as $result): ?>
+                        <?php
+                        $akten = isset($result['akten']) && is_array($result['akten']) ? $result['akten'] : [];
+                        $people = isset($akten['people']) && is_array($akten['people']) ? $akten['people'] : [];
+                        $initiators = isset($akten['initiators']) && is_array($akten['initiators']) ? $akten['initiators'] : [];
+                        $topics = isset($akten['topics']) && is_array($akten['topics']) ? $akten['topics'] : [];
+                        $headwords = isset($akten['headwords']) && is_array($akten['headwords']) ? $akten['headwords'] : [];
+                        $eurovoc = isset($akten['eurovoc']) && is_array($akten['eurovoc']) ? $akten['eurovoc'] : [];
+                        $stageOrder = isset($akten['stage_order']) && is_array($akten['stage_order']) ? $akten['stage_order'] : ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
+                        $stageMap = isset($akten['stages']) && is_array($akten['stages']) ? $akten['stages'] : [];
+                        $aktenSource = isset($akten['source']) ? (string) $akten['source'] : 'fallback';
+                        $currentStageLabel = isset($akten['current_stage_label']) ? trim((string) $akten['current_stage_label']) : '';
+                        if ($currentStageLabel === '') {
+                            $currentStageLabel = !empty($result['answered']) ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat';
+                        }
+
+                        $initiatorNames = [];
+                        foreach ($initiators as $initiator) {
+                            if (!is_array($initiator)) {
+                                continue;
+                            }
+                            $initiatorName = trim((string) (isset($initiator['name']) ? $initiator['name'] : ''));
+                            if ($initiatorName === '') {
+                                continue;
+                            }
+                            $initiatorNames[] = $initiatorName;
+                        }
+                        $initiatorSummary = !empty($initiatorNames) ? implode(', ', $initiatorNames) : 'Nicht verfügbar';
+                        ?>
                         <div class="result-item grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-6 items-start group">
                             
                             <div class="flex justify-between items-baseline md:hidden mb-1">
@@ -453,6 +481,117 @@
                                 <a href="<?php echo htmlspecialchars($result['link']); ?>" target="_blank" class="text-base md:text-lg text-white font-sans leading-snug hover:underline decoration-1 underline-offset-4 decoration-gray-500 block">
                                     <?php echo htmlspecialchars($result['title']); ?>
                                 </a>
+
+                                <div class="akten-meta-block">
+                                    <div class="akten-meta-line">
+                                        <span class="akten-meta-label">Aktuelle Verfahrensstufe</span>
+                                        <span class="akten-meta-value akten-status-pill"><?php echo htmlspecialchars($currentStageLabel); ?></span>
+                                    </div>
+                                    <div class="akten-meta-line">
+                                        <span class="akten-meta-label">Eingebracht von</span>
+                                        <span class="akten-meta-value"><?php echo htmlspecialchars($initiatorSummary); ?></span>
+                                    </div>
+                                    <?php if (!empty($people)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Personen (Funktion / Name / Fraktion / PAD)</span>
+                                            <div class="akten-person-list">
+                                                <?php foreach (array_slice($people, 0, 6) as $person): ?>
+                                                    <?php
+                                                    $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
+                                                    $personName = isset($person['name']) ? trim((string) $person['name']) : '';
+                                                    $personParty = isset($person['party_code']) ? trim((string) $person['party_code']) : '';
+                                                    $personPad = isset($person['pad']) ? trim((string) $person['pad']) : '';
+                                                    $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
+                                                    if ($personName === '') {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <div class="akten-person-item">
+                                                        <span class="akten-person-main">
+                                                            <?php if ($personFunction !== ''): ?>
+                                                                <span class="akten-person-fn"><?php echo htmlspecialchars($personFunction); ?>:</span>
+                                                            <?php endif; ?>
+                                                            <?php if ($personUrl !== ''): ?>
+                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
+                                                            <?php else: ?>
+                                                                <?php echo htmlspecialchars($personName); ?>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                        <span class="akten-person-meta">
+                                                            <?php if ($personParty !== ''): ?>
+                                                                <span>Fraktion: <?php echo htmlspecialchars($personParty); ?></span>
+                                                            <?php endif; ?>
+                                                            <?php if ($personPad !== ''): ?>
+                                                                <span>PAD: <?php echo htmlspecialchars($personPad); ?></span>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if ($aktenSource !== 'geschichtsseite'): ?>
+                                        <div class="akten-meta-line">
+                                            <span class="akten-meta-label">Datenquelle</span>
+                                            <span class="akten-meta-value">Listen-API (Fallback)</span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="akten-stages">
+                                        <?php foreach ($stageOrder as $stageKey): ?>
+                                            <?php
+                                            $stage = isset($stageMap[$stageKey]) && is_array($stageMap[$stageKey]) ? $stageMap[$stageKey] : [
+                                                'label' => $stageKey,
+                                                'completed' => false,
+                                                'date' => ''
+                                            ];
+                                            $isCompleted = !empty($stage['completed']);
+                                            $stageLabel = isset($stage['label']) ? (string) $stage['label'] : $stageKey;
+                                            $stageDate = isset($stage['date']) ? trim((string) $stage['date']) : '';
+                                            ?>
+                                            <div class="akten-stage-item <?php echo $isCompleted ? 'is-done' : 'is-open'; ?>">
+                                                <span class="akten-stage-dot" aria-hidden="true"></span>
+                                                <span class="akten-stage-label"><?php echo htmlspecialchars($stageLabel); ?></span>
+                                                <?php if ($stageDate !== ''): ?>
+                                                    <span class="akten-stage-date"><?php echo htmlspecialchars($stageDate); ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+
+                                    <?php if (!empty($topics)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Themen</span>
+                                            <div class="akten-chip-wrap">
+                                                <?php foreach (array_slice($topics, 0, 8) as $topic): ?>
+                                                    <span class="akten-chip"><?php echo htmlspecialchars($topic); ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($headwords)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Schlagwörter</span>
+                                            <div class="akten-chip-wrap">
+                                                <?php foreach (array_slice($headwords, 0, 8) as $headword): ?>
+                                                    <span class="akten-chip"><?php echo htmlspecialchars($headword); ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($eurovoc)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">EUROVOC</span>
+                                            <div class="akten-chip-wrap">
+                                                <?php foreach (array_slice($eurovoc, 0, 8) as $eurovocTerm): ?>
+                                                    <span class="akten-chip"><?php echo htmlspecialchars($eurovocTerm); ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
 
                             <div class="md:col-span-2 flex justify-end md:block md:text-right mt-2 md:mt-0">

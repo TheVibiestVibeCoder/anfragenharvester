@@ -18,7 +18,7 @@ function app_build_dashboard_view_model($queryParams, $cache) {
     $stopwords = app_stopwords();
     $partyCodes = array_keys(app_default_party_stats());
 
-    $cacheKey = 'inquiry_data_v3_' . md5(serialize($gpCodes) . $cutoffDate->format('Y-m-d'));
+    $cacheKey = 'inquiry_data_v4_' . md5(serialize($gpCodes) . $cutoffDate->format('Y-m-d'));
     $cachedData = $cache->get($cacheKey);
 
     if (is_array($cachedData)) {
@@ -66,6 +66,11 @@ function app_build_dashboard_view_model($queryParams, $cache) {
 
             $rowLink = app_build_inquiry_link(app_get_row_value($row, 14, 'LINK'));
             $rowNumber = trim((string) app_get_row_value($row, 7, 'NPARL'));
+            $rowGpCode = trim((string) app_get_row_value($row, 0, 'GP_CODE'));
+            $rowPadIds = app_parse_jsonish_list(app_get_row_value($row, 20, 'PAD_INTERN'));
+            $rowTopics = app_parse_jsonish_list(app_get_row_value($row, 22, 'THEMEN'));
+            $rowHeadwords = app_parse_jsonish_list(app_get_row_value($row, 23, 'SW'));
+            $rowEurovoc = app_parse_jsonish_list(app_get_row_value($row, 24, 'EUROVOC'));
 
             $answerInfo = app_extract_answer_info($rowTitle);
 
@@ -102,7 +107,12 @@ function app_build_dashboard_view_model($queryParams, $cache) {
                 'answered' => $answerInfo['answered'],
                 'answer_number' => $answerInfo['answer_number'],
                 'link' => $rowLink,
-                'number' => $rowNumber
+                'number' => $rowNumber,
+                'gp_code' => $rowGpCode,
+                'pad_ids' => $rowPadIds,
+                'topics' => $rowTopics,
+                'headwords' => $rowHeadwords,
+                'eurovoc' => $rowEurovoc
             ];
         }
 
@@ -214,6 +224,7 @@ function app_build_dashboard_view_model($queryParams, $cache) {
     $totalPages = max(1, (int) ceil($totalResults / $perPage));
     $offset = ($page - 1) * $perPage;
     $displayResults = array_slice($allResults, $offset, $perPage);
+    $displayResults = app_enrich_results_for_akten($displayResults, $cache);
     $totalCount = $totalResults;
 
     $earliestDate = null;
@@ -256,4 +267,275 @@ function app_build_dashboard_view_model($queryParams, $cache) {
         'earliestDateFormatted' => $earliestDateFormatted,
         'partyMap' => $partyMap
     ];
+}
+
+function app_enrich_results_for_akten(array $results, $cache) {
+    $enriched = [];
+
+    foreach ($results as $result) {
+        if (!is_array($result)) {
+            continue;
+        }
+
+        $historyCacheKey = 'geschichtsseite_v1_' . md5((string) ($result['link'] ?? ''));
+        $aktenData = $cache->get($historyCacheKey);
+
+        if (!is_array($aktenData)) {
+            $historyResponse = app_fetch_geschichtsseite_response(isset($result['link']) ? $result['link'] : '', 20);
+            if (is_array($historyResponse)) {
+                $aktenData = app_build_akten_from_geschichtsseite($historyResponse, $result);
+            }
+
+            if (!is_array($aktenData)) {
+                $aktenData = app_build_akten_fallback($result);
+                $cache->set($historyCacheKey, $aktenData, 1800);
+            } else {
+                $cache->set($historyCacheKey, $aktenData, 43200);
+            }
+        }
+
+        $result['akten'] = $aktenData;
+        $enriched[] = $result;
+    }
+
+    return $enriched;
+}
+
+function app_build_akten_from_geschichtsseite(array $historyResponse, array $result) {
+    $content = isset($historyResponse['content']) && is_array($historyResponse['content']) ? $historyResponse['content'] : [];
+    if (empty($content)) {
+        return app_build_akten_fallback($result);
+    }
+
+    $people = [];
+    $initiators = [];
+    $recipients = [];
+    $names = isset($content['names']) && is_array($content['names']) ? $content['names'] : [];
+
+    foreach ($names as $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+
+        $functionLabel = trim((string) (isset($entry['funktext']) ? $entry['funktext'] : ''));
+        $name = trim((string) (isset($entry['name']) ? $entry['name'] : ''));
+        if ($name === '') {
+            continue;
+        }
+
+        $partyCode = trim((string) (isset($entry['frak_code']) ? $entry['frak_code'] : ''));
+        $personUrl = app_parliament_make_absolute_url(isset($entry['url']) ? $entry['url'] : '');
+        $pad = app_extract_pad_from_person_url($personUrl);
+
+        $person = [
+            'function' => $functionLabel,
+            'name' => $name,
+            'party_code' => $partyCode,
+            'pad' => $pad,
+            'url' => $personUrl
+        ];
+        $people[] = $person;
+
+        $functionMatch = mb_strtolower($functionLabel, 'UTF-8');
+        if (strpos($functionMatch, 'eingebracht von') !== false) {
+            $initiators[] = $person;
+        }
+        if (strpos($functionMatch, 'eingebracht an') !== false) {
+            $recipients[] = $person;
+        }
+    }
+
+    if (empty($initiators) && !empty($people)) {
+        $initiators[] = $people[0];
+    }
+
+    $topics = app_collect_bubble_labels(isset($content['topics']) ? $content['topics'] : null);
+    $headwords = app_collect_bubble_labels(isset($content['headwords']) ? $content['headwords'] : null);
+    $eurovoc = app_collect_bubble_labels(isset($content['eurovoc']) ? $content['eurovoc'] : null);
+
+    if (empty($topics)) {
+        $topics = app_parse_jsonish_list(isset($result['topics']) ? $result['topics'] : []);
+    }
+    if (empty($headwords)) {
+        $headwords = app_parse_jsonish_list(isset($result['headwords']) ? $result['headwords'] : []);
+    }
+    if (empty($eurovoc)) {
+        $eurovoc = app_parse_jsonish_list(isset($result['eurovoc']) ? $result['eurovoc'] : []);
+    }
+
+    $stages = app_default_akten_stages();
+    $rawStages = isset($content['stages']) && is_array($content['stages']) ? $content['stages'] : [];
+    $stagesRaw = [];
+
+    foreach ($rawStages as $stage) {
+        if (!is_array($stage)) {
+            continue;
+        }
+
+        $date = trim((string) (isset($stage['date']) ? $stage['date'] : ''));
+        $plainText = app_html_to_plain_text(isset($stage['text']) ? $stage['text'] : '');
+        $stageKey = app_match_stage_key($plainText);
+
+        $stagesRaw[] = [
+            'date' => $date,
+            'text' => $plainText,
+            'key' => $stageKey
+        ];
+
+        if ($stageKey === null || !isset($stages[$stageKey])) {
+            continue;
+        }
+
+        $stages[$stageKey]['completed'] = true;
+        if ($stages[$stageKey]['date'] === '' && $date !== '') {
+            $stages[$stageKey]['date'] = $date;
+        }
+        if ($stages[$stageKey]['text'] === '' && $plainText !== '') {
+            $stages[$stageKey]['text'] = $plainText;
+        }
+    }
+
+    $currentStageLabel = app_resolve_current_stage_label($content, $stages, $result);
+
+    return [
+        'source' => 'geschichtsseite',
+        'current_stage_label' => $currentStageLabel,
+        'people' => $people,
+        'initiators' => $initiators,
+        'recipients' => $recipients,
+        'topics' => $topics,
+        'headwords' => $headwords,
+        'eurovoc' => $eurovoc,
+        'stages' => $stages,
+        'stage_order' => ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'],
+        'stages_raw' => $stagesRaw
+    ];
+}
+
+function app_build_akten_fallback(array $result) {
+    $stages = app_default_akten_stages();
+    $stages['einlangen']['completed'] = true;
+    $stages['einlangen']['date'] = isset($result['date']) ? (string) $result['date'] : '';
+
+    $isAnswered = !empty($result['answered']);
+    if ($isAnswered) {
+        $stages['beantwortung']['completed'] = true;
+    }
+
+    $padIds = app_parse_jsonish_list(isset($result['pad_ids']) ? $result['pad_ids'] : []);
+    $initiators = [];
+    foreach ($padIds as $pad) {
+        $pad = trim((string) $pad);
+        if ($pad === '') {
+            continue;
+        }
+        $initiators[] = [
+            'function' => 'Eingebracht von',
+            'name' => 'PAD ' . $pad,
+            'party_code' => '',
+            'pad' => $pad,
+            'url' => app_parliament_make_absolute_url('/person/' . $pad)
+        ];
+    }
+
+    return [
+        'source' => 'fallback',
+        'current_stage_label' => $isAnswered ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat',
+        'people' => $initiators,
+        'initiators' => $initiators,
+        'recipients' => [],
+        'topics' => app_parse_jsonish_list(isset($result['topics']) ? $result['topics'] : []),
+        'headwords' => app_parse_jsonish_list(isset($result['headwords']) ? $result['headwords'] : []),
+        'eurovoc' => app_parse_jsonish_list(isset($result['eurovoc']) ? $result['eurovoc'] : []),
+        'stages' => $stages,
+        'stage_order' => ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'],
+        'stages_raw' => []
+    ];
+}
+
+function app_collect_bubble_labels($node) {
+    if (!is_array($node)) {
+        return [];
+    }
+
+    $data = isset($node['data']) && is_array($node['data']) ? $node['data'] : [];
+    $bubbles = isset($data['bubbles']) && is_array($data['bubbles']) ? $data['bubbles'] : [];
+    $labels = [];
+
+    foreach ($bubbles as $bubble) {
+        if (!is_array($bubble)) {
+            continue;
+        }
+        $label = trim((string) (isset($bubble['label']) ? $bubble['label'] : ''));
+        if ($label === '') {
+            continue;
+        }
+        if (!in_array($label, $labels, true)) {
+            $labels[] = $label;
+        }
+    }
+
+    return $labels;
+}
+
+function app_default_akten_stages() {
+    return [
+        'einlangen' => [
+            'label' => 'Einlangen im Nationalrat',
+            'completed' => false,
+            'date' => '',
+            'text' => ''
+        ],
+        'uebermittlung' => [
+            'label' => 'Übermittlung',
+            'completed' => false,
+            'date' => '',
+            'text' => ''
+        ],
+        'mitteilung' => [
+            'label' => 'Mitteilung des Einlangens in einer Plenarsitzung',
+            'completed' => false,
+            'date' => '',
+            'text' => ''
+        ],
+        'beantwortung' => [
+            'label' => 'Schriftliche Beantwortung',
+            'completed' => false,
+            'date' => '',
+            'text' => ''
+        ]
+    ];
+}
+
+function app_resolve_current_stage_label(array $content, array $stages, array $result) {
+    if (isset($content['status'])) {
+        if (is_string($content['status'])) {
+            $status = trim($content['status']);
+            if ($status !== '') {
+                return $status;
+            }
+        } elseif (is_array($content['status'])) {
+            foreach (['label', 'text', 'name'] as $candidateKey) {
+                if (isset($content['status'][$candidateKey])) {
+                    $status = trim((string) $content['status'][$candidateKey]);
+                    if ($status !== '') {
+                        return $status;
+                    }
+                }
+            }
+        }
+    }
+
+    $priority = ['beantwortung', 'mitteilung', 'uebermittlung', 'einlangen'];
+    foreach ($priority as $stageKey) {
+        if (isset($stages[$stageKey]) && !empty($stages[$stageKey]['completed'])) {
+            return $stages[$stageKey]['label'];
+        }
+    }
+
+    if (!empty($result['answered'])) {
+        return 'Schriftliche Beantwortung';
+    }
+
+    return 'Einlangen im Nationalrat';
 }
