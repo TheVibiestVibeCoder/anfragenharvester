@@ -143,6 +143,9 @@ function app_build_geschichtsseite_candidate_urls($baseUrl) {
     $candidates = [
         app_append_query_param($baseUrl, 'outputMode', 'jsontemplate'),
         app_append_query_param($baseUrl, 'outputMode', 'json'),
+        app_append_query_param($baseUrl, 'js', 'eval'),
+        rtrim($baseUrl, '/') . '/json',
+        rtrim($baseUrl, '/') . '.json',
         $baseUrl
     ];
 
@@ -188,9 +191,18 @@ function app_fetch_text_get($url, $timeout = 12) {
 }
 
 function app_fetch_person_name_by_pad($pad, $timeout = 12) {
+    $profile = app_fetch_person_profile_by_pad($pad, $timeout);
+    return isset($profile['name']) ? (string) $profile['name'] : '';
+}
+
+function app_fetch_person_profile_by_pad($pad, $timeout = 12) {
     $pad = preg_replace('/[^0-9]/', '', (string) $pad);
     if ($pad === '') {
-        return '';
+        return [
+            'name' => '',
+            'party_code' => '',
+            'is_government' => false
+        ];
     }
 
     $baseUrl = 'https://www.parlament.gv.at/person/' . rawurlencode($pad);
@@ -200,22 +212,142 @@ function app_fetch_person_name_by_pad($pad, $timeout = 12) {
         $baseUrl
     ];
 
+    $best = [
+        'name' => '',
+        'party_code' => '',
+        'is_government' => false
+    ];
+
     foreach ($candidates as $candidateUrl) {
         $payload = app_fetch_json_get($candidateUrl, $timeout);
         if (is_array($payload)) {
-            $name = app_extract_person_name_from_payload($payload);
-            if ($name !== '') {
-                return $name;
-            }
+            $candidate = app_extract_person_profile_from_payload($payload);
+            $best = app_merge_person_profiles($best, $candidate);
         }
     }
 
-    $html = app_fetch_text_get($baseUrl, $timeout);
-    if ($html === '') {
-        return '';
+    if ($best['name'] === '' || $best['party_code'] === '' || $best['is_government'] === false) {
+        $html = app_fetch_text_get($baseUrl, $timeout);
+        if ($html !== '') {
+            $candidate = app_extract_person_profile_from_html($html);
+            $best = app_merge_person_profiles($best, $candidate);
+        }
     }
 
-    return app_extract_person_name_from_html($html);
+    return $best;
+}
+
+function app_merge_person_profiles(array $base, array $candidate) {
+    if (!isset($base['name'])) {
+        $base['name'] = '';
+    }
+    if (!isset($base['party_code'])) {
+        $base['party_code'] = '';
+    }
+    if (!isset($base['is_government'])) {
+        $base['is_government'] = false;
+    }
+
+    if (isset($candidate['name']) && trim((string) $candidate['name']) !== '') {
+        $base['name'] = trim((string) $candidate['name']);
+    }
+    if (isset($candidate['party_code']) && trim((string) $candidate['party_code']) !== '') {
+        $base['party_code'] = trim((string) $candidate['party_code']);
+    }
+    if (!empty($candidate['is_government'])) {
+        $base['is_government'] = true;
+    }
+
+    return $base;
+}
+
+function app_extract_person_profile_from_payload(array $payload) {
+    $name = app_extract_person_name_from_payload($payload);
+    $partyCode = '';
+
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if (is_string($json) && $json !== '') {
+        if (preg_match('/"frak_code"\s*:\s*"([^"]+)"/i', $json, $m)) {
+            $partyCode = trim((string) $m[1]);
+        } elseif (preg_match('/"fraktion"\s*:\s*"([^"]+)"/i', $json, $m)) {
+            $partyCode = trim((string) $m[1]);
+        } elseif (preg_match('/"klub"\s*:\s*"([^"]+)"/i', $json, $m)) {
+            $partyCode = trim((string) $m[1]);
+        }
+    }
+
+    $roleText = '';
+    if (isset($payload['meta']['description'])) {
+        $roleText .= ' ' . (string) $payload['meta']['description'];
+    }
+    if (isset($payload['content']['description'])) {
+        $roleText .= ' ' . (string) $payload['content']['description'];
+    }
+    if (isset($payload['content']['title'])) {
+        $roleText .= ' ' . (string) $payload['content']['title'];
+    }
+    if (is_string($json) && $json !== '') {
+        $roleText .= ' ' . $json;
+    }
+
+    return [
+        'name' => $name,
+        'party_code' => $partyCode,
+        'is_government' => app_text_indicates_government_role($roleText)
+    ];
+}
+
+function app_extract_person_profile_from_html($html) {
+    return [
+        'name' => app_extract_person_name_from_html($html),
+        'party_code' => app_extract_person_party_code_from_html($html),
+        'is_government' => app_text_indicates_government_role($html)
+    ];
+}
+
+function app_extract_person_party_code_from_html($html) {
+    $html = (string) $html;
+    if (preg_match('/"frak_code"\s*:\s*"([^"]+)"/i', $html, $m)) {
+        return trim((string) $m[1]);
+    }
+    if (preg_match('/"fraktion"\s*:\s*"([^"]+)"/i', $html, $m)) {
+        return trim((string) $m[1]);
+    }
+    if (preg_match('/"klub"\s*:\s*"([^"]+)"/i', $html, $m)) {
+        return trim((string) $m[1]);
+    }
+
+    return '';
+}
+
+function app_text_indicates_government_role($text) {
+    $text = mb_strtolower((string) $text, 'UTF-8');
+    $text = strtr($text, [
+        'ä' => 'ae',
+        'ö' => 'oe',
+        'ü' => 'ue',
+        'ß' => 'ss'
+    ]);
+
+    $keywords = [
+        'bundesminister',
+        'ministerin',
+        'minister',
+        'staatssekretaer',
+        'bundeskanzler',
+        'rechnungshof',
+        'praesidentin des nationalrates',
+        'praesident des nationalrates',
+        'ausschussvorsitz'
+    ];
+
+    foreach ($keywords as $keyword) {
+        if (strpos($text, $keyword) !== false) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function app_extract_person_name_from_payload(array $payload) {

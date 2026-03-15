@@ -69,6 +69,7 @@ function app_build_dashboard_view_model($queryParams, $cache, array $options = [
             $rowNumber = trim((string) app_get_row_value($row, 7, 'NPARL'));
             $rowGpCode = trim((string) app_get_row_value($row, 0, 'GP_CODE'));
             $rowPadIds = app_parse_jsonish_list(app_get_row_value($row, 20, 'PAD_INTERN'));
+            $rowFrakCodes = app_parse_jsonish_list(app_get_row_value($row, 21, 'FRAK_CODE'));
             $rowTopics = app_parse_jsonish_list(app_get_row_value($row, 22, 'THEMEN'));
             $rowHeadwords = app_parse_jsonish_list(app_get_row_value($row, 23, 'SW'));
             $rowEurovoc = app_parse_jsonish_list(app_get_row_value($row, 24, 'EUROVOC'));
@@ -111,6 +112,7 @@ function app_build_dashboard_view_model($queryParams, $cache, array $options = [
                 'number' => $rowNumber,
                 'gp_code' => $rowGpCode,
                 'pad_ids' => $rowPadIds,
+                'frak_codes' => $rowFrakCodes,
                 'topics' => $rowTopics,
                 'headwords' => $rowHeadwords,
                 'eurovoc' => $rowEurovoc,
@@ -300,7 +302,7 @@ function app_enrich_results_for_akten(array $results, $cache) {
         $aktenData = $cache->get($historyCacheKey);
 
         if (!is_array($aktenData)) {
-            $historyResponse = app_fetch_geschichtsseite_response(isset($result['link']) ? $result['link'] : '', 5);
+            $historyResponse = app_fetch_geschichtsseite_response(isset($result['link']) ? $result['link'] : '', 10);
             if (is_array($historyResponse)) {
                 $aktenData = app_build_akten_from_geschichtsseite($historyResponse, $result, $cache);
             }
@@ -443,38 +445,91 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
     }
 
     $padIds = app_parse_jsonish_list(isset($result['pad_ids']) ? $result['pad_ids'] : []);
+    $rowFrakCodes = app_normalize_frak_codes(app_parse_jsonish_list(isset($result['frak_codes']) ? $result['frak_codes'] : []));
     $initiators = [];
+    $recipients = [];
+    $unknown = [];
+
     foreach ($padIds as $pad) {
         $pad = trim((string) $pad);
         if ($pad === '') {
             continue;
         }
 
+        $profile = [
+            'name' => '',
+            'party_code' => '',
+            'is_government' => false
+        ];
         if ($resolvePadNames) {
-            $displayName = app_resolve_person_name_by_pad($pad, $cache);
-            if ($displayName === '') {
-                $displayName = 'PAD ' . $pad;
-            }
-        } else {
+            $profile = app_resolve_person_profile_by_pad($pad, $cache);
+        }
+
+        $displayName = trim((string) (isset($profile['name']) ? $profile['name'] : ''));
+        if ($displayName === '') {
             $displayName = 'PAD ' . $pad;
         }
 
-        $initiators[] = [
-            'function' => 'Eingebracht von',
+        $personParty = app_normalize_frak_code(isset($profile['party_code']) ? $profile['party_code'] : '');
+        $isGovernment = !empty($profile['is_government']);
+
+        $person = [
+            'function' => '',
             'name' => $displayName,
-            'party_code' => '',
+            'party_code' => $personParty,
             'pad' => $pad,
             'url' => app_parliament_make_absolute_url('/person/' . $pad),
-            'role' => 'initiator'
+            'role' => 'other'
         ];
+
+        $isInitiatorByParty = $personParty !== '' && !empty($rowFrakCodes) && in_array($personParty, $rowFrakCodes, true);
+        $isRecipientByParty = $personParty !== '' && !empty($rowFrakCodes) && !in_array($personParty, $rowFrakCodes, true);
+
+        if ($isGovernment || $isRecipientByParty) {
+            $person['function'] = 'Eingebracht an';
+            $person['role'] = 'recipient';
+            $recipients[] = $person;
+            continue;
+        }
+
+        if ($isInitiatorByParty) {
+            $person['function'] = 'Eingebracht von';
+            $person['role'] = 'initiator';
+            $initiators[] = $person;
+            continue;
+        }
+
+        $unknown[] = $person;
     }
+
+    if (empty($recipients) && count($padIds) >= 2 && !empty($unknown)) {
+        $recipientGuess = array_shift($unknown);
+        if (is_array($recipientGuess)) {
+            $recipientGuess['function'] = 'Eingebracht an';
+            $recipientGuess['role'] = 'recipient';
+            $recipients[] = $recipientGuess;
+        } else {
+            $unknown = [];
+        }
+    }
+
+    foreach ($unknown as $leftover) {
+        if (!is_array($leftover)) {
+            continue;
+        }
+        $leftover['function'] = 'Eingebracht von';
+        $leftover['role'] = 'initiator';
+        $initiators[] = $leftover;
+    }
+
+    $people = array_merge($initiators, $recipients);
 
     return [
         'source' => 'fallback',
         'current_stage_label' => $isAnswered ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat',
-        'people' => $initiators,
+        'people' => $people,
         'initiators' => $initiators,
-        'recipients' => [],
+        'recipients' => $recipients,
         'topics' => app_parse_jsonish_list(isset($result['topics']) ? $result['topics'] : []),
         'headwords' => app_parse_jsonish_list(isset($result['headwords']) ? $result['headwords'] : []),
         'eurovoc' => app_parse_jsonish_list(isset($result['eurovoc']) ? $result['eurovoc'] : []),
@@ -572,31 +627,48 @@ function app_resolve_current_stage_label(array $content, array $stages, array $r
 }
 
 function app_resolve_person_name_by_pad($pad, $cache = null) {
+    $profile = app_resolve_person_profile_by_pad($pad, $cache);
+    return isset($profile['name']) ? (string) $profile['name'] : '';
+}
+
+function app_resolve_person_profile_by_pad($pad, $cache = null) {
     $pad = preg_replace('/[^0-9]/', '', (string) $pad);
     if ($pad === '') {
-        return '';
+        return [
+            'name' => '',
+            'party_code' => '',
+            'is_government' => false
+        ];
     }
 
-    $cacheKey = 'person_name_v1_' . $pad;
+    $cacheKey = 'person_profile_v1_' . $pad;
     if ($cache && method_exists($cache, 'get')) {
-        $cachedName = $cache->get($cacheKey);
-        if ($cachedName !== null) {
-            return is_string($cachedName) ? trim($cachedName) : '';
+        $cachedProfile = $cache->get($cacheKey);
+        if (is_array($cachedProfile)) {
+            return [
+                'name' => isset($cachedProfile['name']) ? trim((string) $cachedProfile['name']) : '',
+                'party_code' => isset($cachedProfile['party_code']) ? trim((string) $cachedProfile['party_code']) : '',
+                'is_government' => !empty($cachedProfile['is_government'])
+            ];
         }
     }
 
-    $name = app_fetch_person_name_by_pad($pad, 8);
-    $name = trim((string) $name);
+    $profile = app_fetch_person_profile_by_pad($pad, 8);
+    $normalized = [
+        'name' => isset($profile['name']) ? trim((string) $profile['name']) : '',
+        'party_code' => isset($profile['party_code']) ? trim((string) $profile['party_code']) : '',
+        'is_government' => !empty($profile['is_government'])
+    ];
 
     if ($cache && method_exists($cache, 'set')) {
-        if ($name !== '') {
-            $cache->set($cacheKey, $name, 2592000);
+        if ($normalized['name'] !== '' || $normalized['party_code'] !== '' || $normalized['is_government']) {
+            $cache->set($cacheKey, $normalized, 2592000);
         } else {
-            $cache->set($cacheKey, '', 1800);
+            $cache->set($cacheKey, ['name' => '', 'party_code' => '', 'is_government' => false], 1800);
         }
     }
 
-    return $name;
+    return $normalized;
 }
 
 function app_classify_akten_person_role($functionLabel) {
@@ -621,4 +693,43 @@ function app_classify_akten_person_role($functionLabel) {
 function app_build_result_akten_key($link, $number, $dateIso = '') {
     $seed = trim((string) $link) . '|' . trim((string) $number) . '|' . trim((string) $dateIso);
     return sha1($seed);
+}
+
+function app_normalize_frak_codes(array $codes) {
+    $normalized = [];
+    foreach ($codes as $code) {
+        $single = app_normalize_frak_code($code);
+        if ($single === '') {
+            continue;
+        }
+        if (!in_array($single, $normalized, true)) {
+            $normalized[] = $single;
+        }
+    }
+
+    return $normalized;
+}
+
+function app_normalize_frak_code($code) {
+    $code = trim(mb_strtoupper((string) $code, 'UTF-8'));
+    if ($code === '') {
+        return '';
+    }
+    if (strpos($code, 'SP') !== false || $code === 'S') {
+        return 'S';
+    }
+    if (strpos($code, 'VP') !== false || $code === 'V') {
+        return 'V';
+    }
+    if (strpos($code, 'FP') !== false || $code === 'F') {
+        return 'F';
+    }
+    if (strpos($code, 'GR') !== false || $code === 'G') {
+        return 'G';
+    }
+    if (strpos($code, 'NEOS') !== false || $code === 'N') {
+        return 'N';
+    }
+
+    return $code;
 }
