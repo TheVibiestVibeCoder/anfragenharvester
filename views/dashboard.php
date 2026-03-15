@@ -229,6 +229,33 @@
 
 <header class="site-header w-full z-50" aria-hidden="true"></header>
 
+    <div id="page-loader" class="page-loader" role="status" aria-live="polite" aria-label="Daten werden geladen">
+        <div class="page-loader-card">
+            <p class="page-loader-kicker">Datenaufbau</p>
+            <h2 class="page-loader-title">Die Akten werden geladen</h2>
+            <p class="page-loader-copy">Bitte kurz warten. Wir bereiten die Parlamentsdaten für diesen Zeitraum auf.</p>
+
+            <div class="page-loader-stats">
+                <div class="page-loader-stat">
+                    <span class="page-loader-label">Datensätze im Zeitraum</span>
+                    <strong id="loader-total-target"><?php echo number_format($totalCount, 0, ',', '.'); ?></strong>
+                </div>
+                <div class="page-loader-stat">
+                    <span class="page-loader-label">Aktuell geladen</span>
+                    <strong id="loader-count-current">0</strong>
+                </div>
+                <div class="page-loader-stat">
+                    <span class="page-loader-label">Akten auf dieser Seite</span>
+                    <strong><?php echo number_format(count($displayResults), 0, ',', '.'); ?></strong>
+                </div>
+            </div>
+
+            <div class="page-loader-bar" aria-hidden="true">
+                <span id="loader-bar-fill"></span>
+            </div>
+        </div>
+    </div>
+
     <section class="hero-shell">
 
         <div class="hero-inner">
@@ -484,7 +511,7 @@
 
                                 <div class="akten-meta-block">
                                     <div class="akten-meta-line">
-                                        <span class="akten-meta-label">Aktuelle Verfahrensstufe</span>
+                                        <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
                                         <span class="akten-meta-value akten-status-pill"><?php echo htmlspecialchars($currentStageLabel); ?></span>
                                     </div>
                                     <div class="akten-meta-line">
@@ -827,6 +854,67 @@
     </footer>
 
     <script>
+        const loaderMeta = {
+            total: <?php echo (int) $totalCount; ?>,
+            page: <?php echo (int) count($displayResults); ?>
+        };
+        let loaderProgress = 0;
+
+        function setLoaderProgress(value) {
+            const safeTotal = Math.max(1, loaderMeta.total);
+            const bounded = Math.max(0, Math.min(safeTotal, Math.floor(value)));
+            loaderProgress = bounded;
+
+            const counter = document.getElementById('loader-count-current');
+            const bar = document.getElementById('loader-bar-fill');
+            if (counter) {
+                counter.textContent = bounded.toLocaleString('de-AT');
+            }
+            if (bar) {
+                bar.style.width = ((bounded / safeTotal) * 100).toFixed(2) + '%';
+            }
+        }
+
+        function animateLoaderProgress(target, durationMs) {
+            const startValue = loaderProgress;
+            const delta = Math.max(0, target - startValue);
+            if (delta === 0) {
+                return;
+            }
+
+            const duration = Math.max(250, durationMs || 800);
+            const startedAt = performance.now();
+
+            function tick(now) {
+                const ratio = Math.min(1, (now - startedAt) / duration);
+                const eased = 1 - Math.pow(1 - ratio, 3);
+                setLoaderProgress(startValue + (delta * eased));
+                if (ratio < 1) {
+                    requestAnimationFrame(tick);
+                }
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        function hidePageLoader() {
+            const loader = document.getElementById('page-loader');
+            if (!loader || loader.classList.contains('is-hidden')) {
+                return;
+            }
+
+            loader.classList.add('is-hidden');
+            setTimeout(function() {
+                loader.style.display = 'none';
+            }, 420);
+        }
+
+        function initPageLoader() {
+            setLoaderProgress(0);
+            const firstTarget = Math.min(loaderMeta.total, Math.max(loaderMeta.page * 2, Math.floor(loaderMeta.total * 0.35)));
+            animateLoaderProgress(firstTarget, 650);
+        }
+
         console.log('=== PARLIAMENT INQUIRY TRACKER DEBUG START ===');
 
         // Initialize charts function - called after Chart.js loads
@@ -1136,6 +1224,8 @@
 
             console.log('✅ All charts initialized successfully!');
             console.log('=== PARLIAMENT INQUIRY TRACKER DEBUG END ===');
+            animateLoaderProgress(loaderMeta.total, 420);
+            setTimeout(hidePageLoader, 280);
 
             // Modal Functions
             window.openModal = function(modalId) {
@@ -1174,8 +1264,13 @@
 
         // Initialize charts when Chart.js is ready and DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
+            initPageLoader();
+
             // Load Chart.js and initialize charts
             loadChartJS().then(() => {
+                const midTarget = Math.min(loaderMeta.total, Math.max(loaderMeta.page * 3, Math.floor(loaderMeta.total * 0.75)));
+                animateLoaderProgress(midTarget, 650);
+
                 // Small delay to ensure Chart.js is fully initialized
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -1184,7 +1279,11 @@
                 });
             }).catch(err => {
                 console.error('Failed to load Chart.js:', err);
+                hidePageLoader();
             });
+
+            // Safety timeout so the overlay cannot get stuck
+            setTimeout(hidePageLoader, 12000);
         });
     </script>
 </body>

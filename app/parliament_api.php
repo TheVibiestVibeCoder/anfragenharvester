@@ -74,6 +74,7 @@ function app_fetch_json_get($url, $timeout = 15) {
         'Accept: application/json,text/plain,*/*',
         'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     ]);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(3, max(1, (int) $timeout)));
     curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
@@ -142,9 +143,6 @@ function app_build_geschichtsseite_candidate_urls($baseUrl) {
     $candidates = [
         app_append_query_param($baseUrl, 'outputMode', 'jsontemplate'),
         app_append_query_param($baseUrl, 'outputMode', 'json'),
-        app_append_query_param($baseUrl, 'js', 'eval'),
-        rtrim($baseUrl, '/') . '/json',
-        rtrim($baseUrl, '/') . '.json',
         $baseUrl
     ];
 
@@ -163,4 +161,126 @@ function app_build_geschichtsseite_candidate_urls($baseUrl) {
 function app_append_query_param($url, $name, $value) {
     $separator = strpos($url, '?') !== false ? '&' : '?';
     return $url . $separator . rawurlencode((string) $name) . '=' . rawurlencode((string) $value);
+}
+
+function app_fetch_text_get($url, $timeout = 12) {
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Accept: text/html,application/xhtml+xml,application/json,text/plain,*/*',
+        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    ]);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(3, max(1, (int) $timeout)));
+    curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false || !empty($error) || $httpCode >= 400) {
+        return '';
+    }
+
+    return (string) $response;
+}
+
+function app_fetch_person_name_by_pad($pad, $timeout = 12) {
+    $pad = preg_replace('/[^0-9]/', '', (string) $pad);
+    if ($pad === '') {
+        return '';
+    }
+
+    $baseUrl = 'https://www.parlament.gv.at/person/' . rawurlencode($pad);
+    $candidates = [
+        app_append_query_param($baseUrl, 'outputMode', 'jsontemplate'),
+        app_append_query_param($baseUrl, 'outputMode', 'json'),
+        $baseUrl
+    ];
+
+    foreach ($candidates as $candidateUrl) {
+        $payload = app_fetch_json_get($candidateUrl, $timeout);
+        if (is_array($payload)) {
+            $name = app_extract_person_name_from_payload($payload);
+            if ($name !== '') {
+                return $name;
+            }
+        }
+    }
+
+    $html = app_fetch_text_get($baseUrl, $timeout);
+    if ($html === '') {
+        return '';
+    }
+
+    return app_extract_person_name_from_html($html);
+}
+
+function app_extract_person_name_from_payload(array $payload) {
+    if (isset($payload['content']['name'])) {
+        $name = app_cleanup_person_title($payload['content']['name']);
+        if ($name !== '') {
+            return $name;
+        }
+    }
+
+    if (isset($payload['meta']['title'])) {
+        $name = app_cleanup_person_title($payload['meta']['title']);
+        if ($name !== '') {
+            return $name;
+        }
+    }
+
+    if (isset($payload['meta']['openGraph']['title'])) {
+        $name = app_cleanup_person_title($payload['meta']['openGraph']['title']);
+        if ($name !== '') {
+            return $name;
+        }
+    }
+
+    return '';
+}
+
+function app_extract_person_name_from_html($html) {
+    $html = (string) $html;
+
+    if (preg_match('/<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $matches)) {
+        $name = app_cleanup_person_title($matches[1]);
+        if ($name !== '') {
+            return $name;
+        }
+    }
+
+    if (preg_match('/<title>(.*?)<\/title>/is', $html, $matches)) {
+        $name = app_cleanup_person_title($matches[1]);
+        if ($name !== '') {
+            return $name;
+        }
+    }
+
+    return '';
+}
+
+function app_cleanup_person_title($rawTitle) {
+    $title = html_entity_decode((string) $rawTitle, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $title = preg_replace('/\s+/', ' ', $title);
+    $title = trim((string) $title);
+    if ($title === '') {
+        return '';
+    }
+
+    $title = preg_replace('/\s*\|\s*Parlament.*$/u', '', $title);
+    $title = trim((string) $title);
+
+    if ($title === '' || mb_strlen($title, 'UTF-8') < 3) {
+        return '';
+    }
+
+    if (stripos($title, 'parlament') !== false && strpos($title, ' ') === false) {
+        return '';
+    }
+
+    return $title;
 }

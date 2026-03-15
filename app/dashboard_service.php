@@ -281,13 +281,13 @@ function app_enrich_results_for_akten(array $results, $cache) {
         $aktenData = $cache->get($historyCacheKey);
 
         if (!is_array($aktenData)) {
-            $historyResponse = app_fetch_geschichtsseite_response(isset($result['link']) ? $result['link'] : '', 20);
+            $historyResponse = app_fetch_geschichtsseite_response(isset($result['link']) ? $result['link'] : '', 5);
             if (is_array($historyResponse)) {
-                $aktenData = app_build_akten_from_geschichtsseite($historyResponse, $result);
+                $aktenData = app_build_akten_from_geschichtsseite($historyResponse, $result, $cache);
             }
 
             if (!is_array($aktenData)) {
-                $aktenData = app_build_akten_fallback($result);
+                $aktenData = app_build_akten_fallback($result, $cache);
                 $cache->set($historyCacheKey, $aktenData, 1800);
             } else {
                 $cache->set($historyCacheKey, $aktenData, 43200);
@@ -301,10 +301,10 @@ function app_enrich_results_for_akten(array $results, $cache) {
     return $enriched;
 }
 
-function app_build_akten_from_geschichtsseite(array $historyResponse, array $result) {
+function app_build_akten_from_geschichtsseite(array $historyResponse, array $result, $cache = null) {
     $content = isset($historyResponse['content']) && is_array($historyResponse['content']) ? $historyResponse['content'] : [];
     if (empty($content)) {
-        return app_build_akten_fallback($result);
+        return app_build_akten_fallback($result, $cache);
     }
 
     $people = [];
@@ -412,7 +412,7 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
     ];
 }
 
-function app_build_akten_fallback(array $result) {
+function app_build_akten_fallback(array $result, $cache = null) {
     $stages = app_default_akten_stages();
     $stages['einlangen']['completed'] = true;
     $stages['einlangen']['date'] = isset($result['date']) ? (string) $result['date'] : '';
@@ -429,9 +429,15 @@ function app_build_akten_fallback(array $result) {
         if ($pad === '') {
             continue;
         }
+
+        $displayName = app_resolve_person_name_by_pad($pad, $cache);
+        if ($displayName === '') {
+            $displayName = 'PAD ' . $pad;
+        }
+
         $initiators[] = [
             'function' => 'Eingebracht von',
-            'name' => 'PAD ' . $pad,
+            'name' => $displayName,
             'party_code' => '',
             'pad' => $pad,
             'url' => app_parliament_make_absolute_url('/person/' . $pad)
@@ -538,4 +544,32 @@ function app_resolve_current_stage_label(array $content, array $stages, array $r
     }
 
     return 'Einlangen im Nationalrat';
+}
+
+function app_resolve_person_name_by_pad($pad, $cache = null) {
+    $pad = preg_replace('/[^0-9]/', '', (string) $pad);
+    if ($pad === '') {
+        return '';
+    }
+
+    $cacheKey = 'person_name_v1_' . $pad;
+    if ($cache && method_exists($cache, 'get')) {
+        $cachedName = $cache->get($cacheKey);
+        if ($cachedName !== null) {
+            return is_string($cachedName) ? trim($cachedName) : '';
+        }
+    }
+
+    $name = app_fetch_person_name_by_pad($pad, 8);
+    $name = trim((string) $name);
+
+    if ($cache && method_exists($cache, 'set')) {
+        if ($name !== '') {
+            $cache->set($cacheKey, $name, 2592000);
+        } else {
+            $cache->set($cacheKey, '', 1800);
+        }
+    }
+
+    return $name;
 }
