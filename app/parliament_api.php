@@ -201,7 +201,8 @@ function app_fetch_person_profile_by_pad($pad, $timeout = 12) {
         return [
             'name' => '',
             'party_code' => '',
-            'is_government' => false
+            'is_government' => false,
+            'is_parliamentarian' => false
         ];
     }
 
@@ -215,7 +216,8 @@ function app_fetch_person_profile_by_pad($pad, $timeout = 12) {
     $best = [
         'name' => '',
         'party_code' => '',
-        'is_government' => false
+        'is_government' => false,
+        'is_parliamentarian' => false
     ];
 
     foreach ($candidates as $candidateUrl) {
@@ -247,6 +249,9 @@ function app_merge_person_profiles(array $base, array $candidate) {
     if (!isset($base['is_government'])) {
         $base['is_government'] = false;
     }
+    if (!isset($base['is_parliamentarian'])) {
+        $base['is_parliamentarian'] = false;
+    }
 
     if (isset($candidate['name']) && trim((string) $candidate['name']) !== '') {
         $base['name'] = trim((string) $candidate['name']);
@@ -256,6 +261,9 @@ function app_merge_person_profiles(array $base, array $candidate) {
     }
     if (!empty($candidate['is_government'])) {
         $base['is_government'] = true;
+    }
+    if (!empty($candidate['is_parliamentarian'])) {
+        $base['is_parliamentarian'] = true;
     }
 
     return $base;
@@ -293,7 +301,8 @@ function app_extract_person_profile_from_payload(array $payload) {
     return [
         'name' => $name,
         'party_code' => $partyCode,
-        'is_government' => app_text_indicates_government_role($roleText)
+        'is_government' => app_text_indicates_government_role($roleText),
+        'is_parliamentarian' => app_text_indicates_parliamentarian_role($roleText)
     ];
 }
 
@@ -301,7 +310,8 @@ function app_extract_person_profile_from_html($html) {
     return [
         'name' => app_extract_person_name_from_html($html),
         'party_code' => app_extract_person_party_code_from_html($html),
-        'is_government' => app_text_indicates_government_role($html)
+        'is_government' => app_text_indicates_government_role($html),
+        'is_parliamentarian' => app_text_indicates_parliamentarian_role($html)
     ];
 }
 
@@ -339,6 +349,34 @@ function app_text_indicates_government_role($text) {
         'praesidentin des nationalrates',
         'praesident des nationalrates',
         'ausschussvorsitz'
+    ];
+
+    foreach ($keywords as $keyword) {
+        if (strpos($text, $keyword) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function app_text_indicates_parliamentarian_role($text) {
+    $text = mb_strtolower((string) $text, 'UTF-8');
+    $text = strtr($text, [
+        'ä' => 'ae',
+        'ö' => 'oe',
+        'ü' => 'ue',
+        'ß' => 'ss'
+    ]);
+
+    $keywords = [
+        'abgeordnete zum nationalrat',
+        'abgeordneter zum nationalrat',
+        'mitglied des bundesrates',
+        'mitglied des nationalrates',
+        'parlamentarier',
+        'nationalrat',
+        'bundesrat'
     ];
 
     foreach ($keywords as $keyword) {

@@ -298,7 +298,7 @@ function app_enrich_results_for_akten(array $results, $cache) {
             continue;
         }
 
-        $historyCacheKey = 'geschichtsseite_v1_' . md5((string) ($result['link'] ?? ''));
+        $historyCacheKey = 'geschichtsseite_v2_' . md5((string) ($result['link'] ?? ''));
         $aktenData = $cache->get($historyCacheKey);
 
         if (!is_array($aktenData)) {
@@ -440,6 +440,7 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
     $stages['einlangen']['date'] = isset($result['date']) ? (string) $result['date'] : '';
 
     $isAnswered = !empty($result['answered']);
+    $inquiryParty = isset($result['party']) ? trim((string) $result['party']) : '';
     if ($isAnswered) {
         $stages['beantwortung']['completed'] = true;
     }
@@ -459,7 +460,8 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
         $profile = [
             'name' => '',
             'party_code' => '',
-            'is_government' => false
+            'is_government' => false,
+            'is_parliamentarian' => false
         ];
         if ($resolvePadNames) {
             $profile = app_resolve_person_profile_by_pad($pad, $cache);
@@ -472,6 +474,7 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
 
         $personParty = app_normalize_frak_code(isset($profile['party_code']) ? $profile['party_code'] : '');
         $isGovernment = !empty($profile['is_government']);
+        $isParliamentarian = !empty($profile['is_parliamentarian']);
 
         $person = [
             'function' => '',
@@ -479,20 +482,24 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
             'party_code' => $personParty,
             'pad' => $pad,
             'url' => app_parliament_make_absolute_url('/person/' . $pad),
-            'role' => 'other'
+            'role' => 'other',
+            'is_government' => $isGovernment,
+            'is_parliamentarian' => $isParliamentarian
         ];
 
         $isInitiatorByParty = $personParty !== '' && !empty($rowFrakCodes) && in_array($personParty, $rowFrakCodes, true);
         $isRecipientByParty = $personParty !== '' && !empty($rowFrakCodes) && !in_array($personParty, $rowFrakCodes, true);
+        $isRecipientByInquiryParty = $personParty !== '' && $inquiryParty !== '' && $personParty !== $inquiryParty;
+        $isInitiatorByInquiryParty = $personParty !== '' && $inquiryParty !== '' && $personParty === $inquiryParty;
 
-        if ($isGovernment || $isRecipientByParty) {
+        if (($isGovernment && !$isParliamentarian) || $isRecipientByParty || $isRecipientByInquiryParty) {
             $person['function'] = 'Eingebracht an';
             $person['role'] = 'recipient';
             $recipients[] = $person;
             continue;
         }
 
-        if ($isInitiatorByParty) {
+        if (($isParliamentarian && !$isGovernment) || $isInitiatorByInquiryParty || $isInitiatorByParty) {
             $person['function'] = 'Eingebracht von';
             $person['role'] = 'initiator';
             $initiators[] = $person;
@@ -502,14 +509,40 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
         $unknown[] = $person;
     }
 
-    if (empty($recipients) && count($padIds) >= 2 && !empty($unknown)) {
-        $recipientGuess = array_shift($unknown);
+    if (empty($recipients) && count($padIds) >= 2) {
+        $recipientGuess = null;
+
+        foreach ($unknown as $idx => $candidate) {
+            if (is_array($candidate) && !empty($candidate['is_government'])) {
+                $recipientGuess = $candidate;
+                unset($unknown[$idx]);
+                break;
+            }
+        }
+
+        if ($recipientGuess === null) {
+            foreach ($initiators as $idx => $candidate) {
+                $candidateParty = isset($candidate['party_code']) ? trim((string) $candidate['party_code']) : '';
+                if ($candidateParty !== '' && $inquiryParty !== '' && $candidateParty !== $inquiryParty) {
+                    $recipientGuess = $candidate;
+                    unset($initiators[$idx]);
+                    break;
+                }
+            }
+        }
+
+        if ($recipientGuess === null && !empty($unknown)) {
+            $recipientGuess = array_pop($unknown);
+        }
+
+        if ($recipientGuess === null && !empty($initiators)) {
+            $recipientGuess = array_pop($initiators);
+        }
+
         if (is_array($recipientGuess)) {
             $recipientGuess['function'] = 'Eingebracht an';
             $recipientGuess['role'] = 'recipient';
             $recipients[] = $recipientGuess;
-        } else {
-            $unknown = [];
         }
     }
 
@@ -521,6 +554,9 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
         $leftover['role'] = 'initiator';
         $initiators[] = $leftover;
     }
+
+    $initiators = array_values($initiators);
+    $recipients = array_values($recipients);
 
     $people = array_merge($initiators, $recipients);
 
@@ -637,18 +673,20 @@ function app_resolve_person_profile_by_pad($pad, $cache = null) {
         return [
             'name' => '',
             'party_code' => '',
-            'is_government' => false
+            'is_government' => false,
+            'is_parliamentarian' => false
         ];
     }
 
-    $cacheKey = 'person_profile_v1_' . $pad;
+    $cacheKey = 'person_profile_v2_' . $pad;
     if ($cache && method_exists($cache, 'get')) {
         $cachedProfile = $cache->get($cacheKey);
         if (is_array($cachedProfile)) {
             return [
                 'name' => isset($cachedProfile['name']) ? trim((string) $cachedProfile['name']) : '',
                 'party_code' => isset($cachedProfile['party_code']) ? trim((string) $cachedProfile['party_code']) : '',
-                'is_government' => !empty($cachedProfile['is_government'])
+                'is_government' => !empty($cachedProfile['is_government']),
+                'is_parliamentarian' => !empty($cachedProfile['is_parliamentarian'])
             ];
         }
     }
@@ -657,14 +695,15 @@ function app_resolve_person_profile_by_pad($pad, $cache = null) {
     $normalized = [
         'name' => isset($profile['name']) ? trim((string) $profile['name']) : '',
         'party_code' => isset($profile['party_code']) ? trim((string) $profile['party_code']) : '',
-        'is_government' => !empty($profile['is_government'])
+        'is_government' => !empty($profile['is_government']),
+        'is_parliamentarian' => !empty($profile['is_parliamentarian'])
     ];
 
     if ($cache && method_exists($cache, 'set')) {
-        if ($normalized['name'] !== '' || $normalized['party_code'] !== '' || $normalized['is_government']) {
+        if ($normalized['name'] !== '' || $normalized['party_code'] !== '' || $normalized['is_government'] || $normalized['is_parliamentarian']) {
             $cache->set($cacheKey, $normalized, 2592000);
         } else {
-            $cache->set($cacheKey, ['name' => '', 'party_code' => '', 'is_government' => false], 1800);
+            $cache->set($cacheKey, ['name' => '', 'party_code' => '', 'is_government' => false, 'is_parliamentarian' => false], 1800);
         }
     }
 
