@@ -6,7 +6,8 @@ require_once __DIR__ . '/inquiry_helpers.php';
 require_once __DIR__ . '/parliament_api.php';
 require_once __DIR__ . '/time_range.php';
 
-function app_build_dashboard_view_model($queryParams, $cache) {
+function app_build_dashboard_view_model($queryParams, $cache, array $options = []) {
+    $includeAktenDetails = !array_key_exists('includeAktenDetails', $options) || (bool) $options['includeAktenDetails'];
     $requestedRange = isset($queryParams['range']) ? $queryParams['range'] : '12months';
     $rangeData = app_resolve_time_range($requestedRange);
 
@@ -18,7 +19,7 @@ function app_build_dashboard_view_model($queryParams, $cache) {
     $stopwords = app_stopwords();
     $partyCodes = array_keys(app_default_party_stats());
 
-    $cacheKey = 'inquiry_data_v4_' . md5(serialize($gpCodes) . $cutoffDate->format('Y-m-d'));
+    $cacheKey = 'inquiry_data_v5_' . md5(serialize($gpCodes) . $cutoffDate->format('Y-m-d'));
     $cachedData = $cache->get($cacheKey);
 
     if (is_array($cachedData)) {
@@ -112,7 +113,8 @@ function app_build_dashboard_view_model($queryParams, $cache) {
                 'pad_ids' => $rowPadIds,
                 'topics' => $rowTopics,
                 'headwords' => $rowHeadwords,
-                'eurovoc' => $rowEurovoc
+                'eurovoc' => $rowEurovoc,
+                'akten_key' => app_build_result_akten_key($rowLink, $rowNumber, $rowDate->format('Y-m-d'))
             ];
         }
 
@@ -224,7 +226,11 @@ function app_build_dashboard_view_model($queryParams, $cache) {
     $totalPages = max(1, (int) ceil($totalResults / $perPage));
     $offset = ($page - 1) * $perPage;
     $displayResults = array_slice($allResults, $offset, $perPage);
-    $displayResults = app_enrich_results_for_akten($displayResults, $cache);
+    if ($includeAktenDetails) {
+        $displayResults = app_enrich_results_for_akten($displayResults, $cache);
+    } else {
+        $displayResults = app_attach_minimal_akten_to_results($displayResults);
+    }
     $totalCount = $totalResults;
 
     $earliestDate = null;
@@ -267,6 +273,19 @@ function app_build_dashboard_view_model($queryParams, $cache) {
         'earliestDateFormatted' => $earliestDateFormatted,
         'partyMap' => $partyMap
     ];
+}
+
+function app_attach_minimal_akten_to_results(array $results) {
+    $prepared = [];
+    foreach ($results as $result) {
+        if (!is_array($result)) {
+            continue;
+        }
+        $result['akten'] = app_build_akten_fallback($result, null, false);
+        $prepared[] = $result;
+    }
+
+    return $prepared;
 }
 
 function app_enrich_results_for_akten(array $results, $cache) {
@@ -327,20 +346,21 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
         $personUrl = app_parliament_make_absolute_url(isset($entry['url']) ? $entry['url'] : '');
         $pad = app_extract_pad_from_person_url($personUrl);
 
+        $role = app_classify_akten_person_role($functionLabel);
         $person = [
             'function' => $functionLabel,
             'name' => $name,
             'party_code' => $partyCode,
             'pad' => $pad,
-            'url' => $personUrl
+            'url' => $personUrl,
+            'role' => $role
         ];
         $people[] = $person;
 
-        $functionMatch = mb_strtolower($functionLabel, 'UTF-8');
-        if (strpos($functionMatch, 'eingebracht von') !== false) {
+        if ($role === 'initiator') {
             $initiators[] = $person;
         }
-        if (strpos($functionMatch, 'eingebracht an') !== false) {
+        if ($role === 'recipient') {
             $recipients[] = $person;
         }
     }
@@ -412,7 +432,7 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
     ];
 }
 
-function app_build_akten_fallback(array $result, $cache = null) {
+function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames = true) {
     $stages = app_default_akten_stages();
     $stages['einlangen']['completed'] = true;
     $stages['einlangen']['date'] = isset($result['date']) ? (string) $result['date'] : '';
@@ -430,8 +450,12 @@ function app_build_akten_fallback(array $result, $cache = null) {
             continue;
         }
 
-        $displayName = app_resolve_person_name_by_pad($pad, $cache);
-        if ($displayName === '') {
+        if ($resolvePadNames) {
+            $displayName = app_resolve_person_name_by_pad($pad, $cache);
+            if ($displayName === '') {
+                $displayName = 'PAD ' . $pad;
+            }
+        } else {
             $displayName = 'PAD ' . $pad;
         }
 
@@ -440,7 +464,8 @@ function app_build_akten_fallback(array $result, $cache = null) {
             'name' => $displayName,
             'party_code' => '',
             'pad' => $pad,
-            'url' => app_parliament_make_absolute_url('/person/' . $pad)
+            'url' => app_parliament_make_absolute_url('/person/' . $pad),
+            'role' => 'initiator'
         ];
     }
 
@@ -572,4 +597,28 @@ function app_resolve_person_name_by_pad($pad, $cache = null) {
     }
 
     return $name;
+}
+
+function app_classify_akten_person_role($functionLabel) {
+    $functionLabel = mb_strtolower((string) $functionLabel, 'UTF-8');
+    $functionLabel = strtr($functionLabel, [
+        'ä' => 'ae',
+        'ö' => 'oe',
+        'ü' => 'ue',
+        'ß' => 'ss'
+    ]);
+
+    if (strpos($functionLabel, 'eingebracht von') !== false) {
+        return 'initiator';
+    }
+    if (strpos($functionLabel, 'eingebracht an') !== false) {
+        return 'recipient';
+    }
+
+    return 'other';
+}
+
+function app_build_result_akten_key($link, $number, $dateIso = '') {
+    $seed = trim((string) $link) . '|' . trim((string) $number) . '|' . trim((string) $dateIso);
+    return sha1($seed);
 }

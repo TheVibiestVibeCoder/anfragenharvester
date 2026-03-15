@@ -459,6 +459,7 @@
                         $akten = isset($result['akten']) && is_array($result['akten']) ? $result['akten'] : [];
                         $people = isset($akten['people']) && is_array($akten['people']) ? $akten['people'] : [];
                         $initiators = isset($akten['initiators']) && is_array($akten['initiators']) ? $akten['initiators'] : [];
+                        $recipients = isset($akten['recipients']) && is_array($akten['recipients']) ? $akten['recipients'] : [];
                         $topics = isset($akten['topics']) && is_array($akten['topics']) ? $akten['topics'] : [];
                         $headwords = isset($akten['headwords']) && is_array($akten['headwords']) ? $akten['headwords'] : [];
                         $eurovoc = isset($akten['eurovoc']) && is_array($akten['eurovoc']) ? $akten['eurovoc'] : [];
@@ -482,8 +483,27 @@
                             $initiatorNames[] = $initiatorName;
                         }
                         $initiatorSummary = !empty($initiatorNames) ? implode(', ', $initiatorNames) : 'Nicht verfügbar';
+
+                        $recipientNames = [];
+                        foreach ($recipients as $recipient) {
+                            if (!is_array($recipient)) {
+                                continue;
+                            }
+                            $recipientName = trim((string) (isset($recipient['name']) ? $recipient['name'] : ''));
+                            if ($recipientName === '') {
+                                continue;
+                            }
+                            $recipientNames[] = $recipientName;
+                        }
+                        $recipientSummary = !empty($recipientNames) ? implode(', ', $recipientNames) : 'Nicht verfügbar';
+
+                        $aktenKey = isset($result['akten_key']) ? trim((string) $result['akten_key']) : '';
+                        if ($aktenKey === '') {
+                            $dateIso = isset($result['date_obj']) && $result['date_obj'] instanceof DateTime ? $result['date_obj']->format('Y-m-d') : '';
+                            $aktenKey = sha1((string) ($result['link'] ?? '') . '|' . (string) ($result['number'] ?? '') . '|' . $dateIso);
+                        }
                         ?>
-                        <div class="result-item grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-6 items-start group">
+                        <div class="result-item grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-6 items-start group" data-akten-key="<?php echo htmlspecialchars($aktenKey); ?>">
                             
                             <div class="flex justify-between items-baseline md:hidden mb-1">
                                 <div class="flex items-center gap-2">
@@ -515,14 +535,57 @@
                                         <span class="akten-meta-value akten-status-pill"><?php echo htmlspecialchars($currentStageLabel); ?></span>
                                     </div>
                                     <div class="akten-meta-line">
-                                        <span class="akten-meta-label">Eingebracht von</span>
+                                        <span class="akten-meta-label">Anfragesteller:innen (Parlament)</span>
                                         <span class="akten-meta-value"><?php echo htmlspecialchars($initiatorSummary); ?></span>
                                     </div>
-                                    <?php if (!empty($people)): ?>
+                                    <div class="akten-meta-line">
+                                        <span class="akten-meta-label">Gerichtet an (Regierung)</span>
+                                        <span class="akten-meta-value"><?php echo htmlspecialchars($recipientSummary); ?></span>
+                                    </div>
+                                    <?php if (!empty($initiators)): ?>
                                         <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Personen (Funktion / Name / Fraktion / PAD)</span>
+                                            <span class="akten-chip-label">Anfragesteller:innen (Parlament)</span>
                                             <div class="akten-person-list">
-                                                <?php foreach (array_slice($people, 0, 6) as $person): ?>
+                                                <?php foreach (array_slice($initiators, 0, 6) as $person): ?>
+                                                    <?php
+                                                    $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
+                                                    $personName = isset($person['name']) ? trim((string) $person['name']) : '';
+                                                    $personParty = isset($person['party_code']) ? trim((string) $person['party_code']) : '';
+                                                    $personPad = isset($person['pad']) ? trim((string) $person['pad']) : '';
+                                                    $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
+                                                    if ($personName === '') {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <div class="akten-person-item">
+                                                        <span class="akten-person-main">
+                                                            <?php if ($personFunction !== ''): ?>
+                                                                <span class="akten-person-fn"><?php echo htmlspecialchars($personFunction); ?>:</span>
+                                                            <?php endif; ?>
+                                                            <?php if ($personUrl !== ''): ?>
+                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
+                                                            <?php else: ?>
+                                                                <?php echo htmlspecialchars($personName); ?>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                        <span class="akten-person-meta">
+                                                            <?php if ($personParty !== ''): ?>
+                                                                <span>Fraktion: <?php echo htmlspecialchars($personParty); ?></span>
+                                                            <?php endif; ?>
+                                                            <?php if ($personPad !== ''): ?>
+                                                                <span>PAD: <?php echo htmlspecialchars($personPad); ?></span>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($recipients)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Adressat:innen in der Regierung</span>
+                                            <div class="akten-person-list">
+                                                <?php foreach (array_slice($recipients, 0, 6) as $person): ?>
                                                     <?php
                                                     $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
                                                     $personName = isset($person['name']) ? trim((string) $person['name']) : '';
@@ -856,12 +919,12 @@
     <script>
         const loaderMeta = {
             total: <?php echo (int) $totalCount; ?>,
-            page: <?php echo (int) count($displayResults); ?>
+            details: <?php echo (int) count($displayResults); ?>
         };
         let loaderProgress = 0;
 
         function setLoaderProgress(value) {
-            const safeTotal = Math.max(1, loaderMeta.total);
+            const safeTotal = Math.max(1, loaderMeta.details);
             const bounded = Math.max(0, Math.min(safeTotal, Math.floor(value)));
             loaderProgress = bounded;
 
@@ -911,8 +974,193 @@
 
         function initPageLoader() {
             setLoaderProgress(0);
-            const firstTarget = Math.min(loaderMeta.total, Math.max(loaderMeta.page * 2, Math.floor(loaderMeta.total * 0.35)));
+            const firstTarget = Math.min(loaderMeta.details, Math.max(1, Math.ceil(loaderMeta.details * 0.25)));
             animateLoaderProgress(firstTarget, 650);
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function buildPeopleHtml(people) {
+            if (!Array.isArray(people) || people.length === 0) {
+                return '';
+            }
+
+            const rows = people.slice(0, 6).map(function(person) {
+                const fn = escapeHtml(person.function || '');
+                const name = escapeHtml(person.name || '');
+                const party = escapeHtml(person.party_code || '');
+                const pad = escapeHtml(person.pad || '');
+                const url = escapeHtml(person.url || '');
+                if (!name) {
+                    return '';
+                }
+
+                const nameHtml = url ? `<a href="${url}" target="_blank" class="underline decoration-1 underline-offset-2 decoration-gray-500">${name}</a>` : name;
+                const partyHtml = party ? `<span>Fraktion: ${party}</span>` : '';
+                const padHtml = pad ? `<span>PAD: ${pad}</span>` : '';
+
+                return `
+                    <div class="akten-person-item">
+                        <span class="akten-person-main">
+                            ${fn ? `<span class="akten-person-fn">${fn}:</span>` : ''}
+                            ${nameHtml}
+                        </span>
+                        <span class="akten-person-meta">${partyHtml}${padHtml}</span>
+                    </div>
+                `;
+            }).join('');
+
+            return rows ? `<div class="akten-person-list">${rows}</div>` : '';
+        }
+
+        function buildStageHtml(akten) {
+            const stageOrder = Array.isArray(akten.stage_order) ? akten.stage_order : ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
+            const stageMap = (akten.stages && typeof akten.stages === 'object') ? akten.stages : {};
+            return stageOrder.map(function(stageKey) {
+                const stage = stageMap[stageKey] || { label: stageKey, completed: false, date: '' };
+                const doneClass = stage.completed ? 'is-done' : 'is-open';
+                const label = escapeHtml(stage.label || stageKey);
+                const date = escapeHtml(stage.date || '');
+                return `
+                    <div class="akten-stage-item ${doneClass}">
+                        <span class="akten-stage-dot" aria-hidden="true"></span>
+                        <span class="akten-stage-label">${label}</span>
+                        ${date ? `<span class="akten-stage-date">${date}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function buildChipRow(label, values) {
+            if (!Array.isArray(values) || values.length === 0) {
+                return '';
+            }
+            const chips = values.slice(0, 8).map(function(value) {
+                return `<span class="akten-chip">${escapeHtml(value)}</span>`;
+            }).join('');
+            return `
+                <div class="akten-chip-row">
+                    <span class="akten-chip-label">${escapeHtml(label)}</span>
+                    <div class="akten-chip-wrap">${chips}</div>
+                </div>
+            `;
+        }
+
+        function renderAktenMetaBlock(akten) {
+            const initiators = Array.isArray(akten.initiators) ? akten.initiators : [];
+            const recipients = Array.isArray(akten.recipients) ? akten.recipients : [];
+            const initiatorSummary = initiators.length ? initiators.map(function(p) { return p.name || ''; }).filter(Boolean).join(', ') : 'Nicht verfügbar';
+            const recipientSummary = recipients.length ? recipients.map(function(p) { return p.name || ''; }).filter(Boolean).join(', ') : 'Nicht verfügbar';
+            const currentStageLabel = akten.current_stage_label || 'Einlangen im Nationalrat';
+            const sourceHtml = akten.source !== 'geschichtsseite'
+                ? '<div class="akten-meta-line"><span class="akten-meta-label">Datenquelle</span><span class="akten-meta-value">Listen-API (Fallback)</span></div>'
+                : '';
+
+            const initiatorList = initiators.length ? `
+                <div class="akten-chip-row">
+                    <span class="akten-chip-label">Anfragesteller:innen (Parlament)</span>
+                    ${buildPeopleHtml(initiators)}
+                </div>
+            ` : '';
+
+            const recipientList = recipients.length ? `
+                <div class="akten-chip-row">
+                    <span class="akten-chip-label">Adressat:innen in der Regierung</span>
+                    ${buildPeopleHtml(recipients)}
+                </div>
+            ` : '';
+
+            return `
+                <div class="akten-meta-line">
+                    <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
+                    <span class="akten-meta-value akten-status-pill">${escapeHtml(currentStageLabel)}</span>
+                </div>
+                <div class="akten-meta-line">
+                    <span class="akten-meta-label">Anfragesteller:innen (Parlament)</span>
+                    <span class="akten-meta-value">${escapeHtml(initiatorSummary)}</span>
+                </div>
+                <div class="akten-meta-line">
+                    <span class="akten-meta-label">Gerichtet an (Regierung)</span>
+                    <span class="akten-meta-value">${escapeHtml(recipientSummary)}</span>
+                </div>
+                ${sourceHtml}
+                ${initiatorList}
+                ${recipientList}
+                <div class="akten-stages">${buildStageHtml(akten)}</div>
+                ${buildChipRow('Themen', akten.topics || [])}
+                ${buildChipRow('Schlagwörter', akten.headwords || [])}
+                ${buildChipRow('EUROVOC', akten.eurovoc || [])}
+            `;
+        }
+
+        function updateAktenMetaBlocks(items) {
+            const keys = Object.keys(items || {});
+            if (!keys.length) {
+                return;
+            }
+
+            let loaded = 0;
+            keys.forEach(function(key) {
+                const row = document.querySelector('.result-item[data-akten-key="' + key + '"]');
+                if (!row) {
+                    return;
+                }
+
+                const block = row.querySelector('.akten-meta-block');
+                if (!block) {
+                    return;
+                }
+
+                block.innerHTML = renderAktenMetaBlock(items[key] || {});
+                loaded++;
+                setLoaderProgress(loaded);
+            });
+        }
+
+        async function loadAktenDetails() {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.has('range')) {
+                params.set('range', '<?php echo htmlspecialchars($timeRange, ENT_QUOTES); ?>');
+            }
+            if (!params.has('page')) {
+                params.set('page', '<?php echo (int) $page; ?>');
+            }
+
+            const endpointUrl = 'akten-details.php?' + params.toString();
+            const waitCap = Math.max(1, Math.floor(loaderMeta.details * 0.8));
+            const waitTicker = setInterval(function() {
+                if (loaderProgress < waitCap) {
+                    setLoaderProgress(loaderProgress + 1);
+                }
+            }, 240);
+
+            try {
+                const response = await fetch(endpointUrl, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json();
+                if (!payload || payload.ok !== true || !payload.items) {
+                    return;
+                }
+
+                updateAktenMetaBlocks(payload.items);
+            } catch (error) {
+                console.error('Failed to load Akten details:', error);
+            } finally {
+                clearInterval(waitTicker);
+            }
         }
 
         console.log('=== PARLIAMENT INQUIRY TRACKER DEBUG START ===');
@@ -1224,8 +1472,6 @@
 
             console.log('✅ All charts initialized successfully!');
             console.log('=== PARLIAMENT INQUIRY TRACKER DEBUG END ===');
-            animateLoaderProgress(loaderMeta.total, 420);
-            setTimeout(hidePageLoader, 280);
 
             // Modal Functions
             window.openModal = function(modalId) {
@@ -1266,24 +1512,31 @@
         document.addEventListener('DOMContentLoaded', function() {
             initPageLoader();
 
-            // Load Chart.js and initialize charts
-            loadChartJS().then(() => {
-                const midTarget = Math.min(loaderMeta.total, Math.max(loaderMeta.page * 3, Math.floor(loaderMeta.total * 0.75)));
+            const chartPromise = loadChartJS().then(() => {
+                const midTarget = Math.min(loaderMeta.details, Math.max(1, Math.ceil(loaderMeta.details * 0.55)));
                 animateLoaderProgress(midTarget, 650);
 
-                // Small delay to ensure Chart.js is fully initialized
-                requestAnimationFrame(() => {
+                return new Promise(function(resolve) {
                     requestAnimationFrame(() => {
-                        initializeCharts();
+                        requestAnimationFrame(() => {
+                            initializeCharts();
+                            resolve();
+                        });
                     });
                 });
             }).catch(err => {
                 console.error('Failed to load Chart.js:', err);
-                hidePageLoader();
+            });
+
+            const aktenPromise = loadAktenDetails();
+
+            Promise.allSettled([chartPromise, aktenPromise]).then(function() {
+                setLoaderProgress(loaderMeta.details);
+                setTimeout(hidePageLoader, 260);
             });
 
             // Safety timeout so the overlay cannot get stuck
-            setTimeout(hidePageLoader, 12000);
+            setTimeout(hidePageLoader, 15000);
         });
     </script>
 </body>
