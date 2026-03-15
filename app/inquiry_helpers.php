@@ -14,6 +14,41 @@ function app_extract_answer_info($rowTitle) {
     ];
 }
 
+function app_parse_row_date($rowDateStr) {
+    $rowDateStr = trim((string) $rowDateStr);
+    if ($rowDateStr === '') {
+        return null;
+    }
+
+    $rowDate = DateTime::createFromFormat('d.m.Y', $rowDateStr);
+    if ($rowDate instanceof DateTime) {
+        return $rowDate;
+    }
+
+    try {
+        return new DateTime($rowDateStr);
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+function app_build_answer_link($inquiryLink, $answerNumber, $fallbackGpCode = 'XXVIII') {
+    $answerNumber = preg_replace('/[^0-9]/', '', (string) $answerNumber);
+    if ($answerNumber === '') {
+        return '';
+    }
+
+    $gpCode = trim((string) $fallbackGpCode);
+    if (preg_match('/\/gegenstand\/([^\/]+)\//', (string) $inquiryLink, $match)) {
+        $gpCode = trim((string) $match[1]);
+    }
+    if ($gpCode === '') {
+        $gpCode = 'XXVIII';
+    }
+
+    return 'https://www.parlament.gv.at/gegenstand/' . rawurlencode($gpCode) . '/AB/' . rawurlencode($answerNumber);
+}
+
 function app_get_row_value($row, $index, $key = null) {
     if (!is_array($row)) {
         return '';
