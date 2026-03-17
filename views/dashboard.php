@@ -458,7 +458,6 @@
                         <?php
                         $akten = isset($result['akten']) && is_array($result['akten']) ? $result['akten'] : [];
                         $people = isset($akten['people']) && is_array($akten['people']) ? $akten['people'] : [];
-                        $documents = isset($akten['documents']) && is_array($akten['documents']) ? $akten['documents'] : [];
                         $topics = isset($akten['topics']) && is_array($akten['topics']) ? $akten['topics'] : [];
                         $headwords = isset($akten['headwords']) && is_array($akten['headwords']) ? $akten['headwords'] : [];
                         $eurovoc = isset($akten['eurovoc']) && is_array($akten['eurovoc']) ? $akten['eurovoc'] : [];
@@ -559,33 +558,6 @@
                                                             <?php endif; ?>
                                                         </span>
                                                     </div>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($documents)): ?>
-                                        <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Dokumente</span>
-                                            <div class="akten-doc-list">
-                                                <?php foreach (array_slice($documents, 0, 8) as $document): ?>
-                                                    <?php
-                                                    $docTitle = isset($document['title']) ? trim((string) $document['title']) : '';
-                                                    $docType = isset($document['type']) ? trim((string) $document['type']) : '';
-                                                    $docLink = isset($document['link']) ? trim((string) $document['link']) : '';
-                                                    if ($docLink === '') {
-                                                        continue;
-                                                    }
-
-                                                    $docLabel = 'Dokument';
-                                                    if ($docType !== '' && $docTitle !== '') {
-                                                        $docLabel = $docType . ' - ' . $docTitle;
-                                                    } elseif ($docType !== '') {
-                                                        $docLabel = $docType;
-                                                    } elseif ($docTitle !== '') {
-                                                        $docLabel = $docTitle;
-                                                    }
-                                                    ?>
-                                                    <a href="<?php echo htmlspecialchars($docLink); ?>" target="_blank" rel="noopener noreferrer" class="akten-doc-btn"><?php echo htmlspecialchars($docLabel); ?></a>
                                                 <?php endforeach; ?>
                                             </div>
                                         </div>
@@ -990,36 +962,6 @@
             return rows ? `<div class="akten-person-list">${rows}</div>` : '';
         }
 
-        function buildDocumentsHtml(documents) {
-            if (!Array.isArray(documents) || documents.length === 0) {
-                return '';
-            }
-
-            const links = documents.slice(0, 8).map(function(document) {
-                const link = escapeHtml(document.link || '');
-                if (!link) {
-                    return '';
-                }
-
-                const title = escapeHtml(document.title || '');
-                const type = escapeHtml(document.type || '');
-                const label = (type && title) ? `${type} - ${title}` : (type || title || 'Dokument');
-
-                return `<a href="${link}" target="_blank" rel="noopener noreferrer" class="akten-doc-btn">${label}</a>`;
-            }).join('');
-
-            if (!links) {
-                return '';
-            }
-
-            return `
-                <div class="akten-chip-row">
-                    <span class="akten-chip-label">Dokumente</span>
-                    <div class="akten-doc-list">${links}</div>
-                </div>
-            `;
-        }
-
         function buildStageHtml(akten) {
             const stageOrder = Array.isArray(akten.stage_order) ? akten.stage_order : ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
             const stageMap = (akten.stages && typeof akten.stages === 'object') ? akten.stages : {};
@@ -1076,8 +1018,6 @@
                 </div>
             ` : '';
 
-            const documentsList = buildDocumentsHtml(akten.documents || []);
-
             return `
                 <div class="akten-meta-line">
                     <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
@@ -1089,7 +1029,6 @@
                 </div>
                 ${sourceHtml}
                 ${peopleList}
-                ${documentsList}
                 <div class="akten-stages">${buildStageHtml(akten)}</div>
                 ${buildChipRow('Themen', akten.topics || [])}
                 ${buildChipRow('Schlagwörter', akten.headwords || [])}
