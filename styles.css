@@ -855,6 +855,8 @@ body.dashboard-page {
 
 .tracker-header {
     border-color: rgba(29, 47, 38, 0.5) !important;
+    display: grid;
+    gap: 0.75rem;
 }
 
 .tracker-header h2 {
@@ -862,8 +864,41 @@ body.dashboard-page {
     font-size: clamp(1.6rem, 3.9vw, 2.75rem);
 }
 
+.dashboard-main .tracker-controls-row {
+    align-items: stretch;
+}
+
 .dashboard-main .time-filter-form {
     width: 100%;
+}
+
+.dashboard-main .time-filter-stack {
+    display: grid;
+    gap: 0.68rem;
+    width: 100%;
+}
+
+.dashboard-main .time-filter-block {
+    border: 1px solid rgba(29, 47, 38, 0.16);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 8px 24px rgba(23, 34, 30, 0.05);
+    padding: 0.62rem;
+}
+
+.dashboard-main .time-filter-block--fixed {
+    border-color: rgba(23, 77, 55, 0.3);
+    background: linear-gradient(180deg, rgba(47, 127, 73, 0.08), rgba(255, 255, 255, 0.92));
+}
+
+.dashboard-main .time-filter-block-title {
+    color: var(--freda-deep);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 0.46rem;
+    padding-left: 0.2rem;
 }
 
 .dashboard-main .time-filter-row {
@@ -871,11 +906,15 @@ body.dashboard-page {
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 0.58rem;
-    padding: 0.55rem;
-    border: 1px solid rgba(29, 47, 38, 0.14);
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.82);
-    box-shadow: 0 8px 24px rgba(23, 34, 30, 0.06);
+    padding: 0;
+}
+
+.dashboard-main .time-filter-row--fixed {
+    align-items: center;
+}
+
+.dashboard-main .time-filter-row--custom {
+    align-items: flex-end;
 }
 
 .dashboard-main .time-filter-field {
@@ -889,6 +928,11 @@ body.dashboard-page {
 .dashboard-main .time-filter-field--range {
     min-width: 230px;
     flex: 2 1 260px;
+}
+
+.dashboard-main .time-filter-field--full {
+    min-width: 100%;
+    flex: 1 1 100%;
 }
 
 .dashboard-main .time-filter-label {
@@ -1415,9 +1459,12 @@ body.dashboard-page {
 }
 
 @media (max-width: 760px) {
+    .dashboard-main .time-filter-block {
+        padding: 0.55rem;
+    }
+
     .dashboard-main .time-filter-row {
         gap: 0.48rem;
-        padding: 0.5rem;
     }
 
     .dashboard-main .time-filter-field,

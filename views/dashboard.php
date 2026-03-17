@@ -284,8 +284,8 @@
 
     <main id="tracker" class="dashboard-main container-custom">
 
-        <header class="tracker-header flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 lg:mb-16 xl:mb-20 border-b-2 border-white pb-8">
-            <div class="mb-8 lg:mb-0">
+        <header class="tracker-header mb-12 lg:mb-16 xl:mb-20 border-b-2 border-white pb-8">
+            <div class="tracker-heading-row mb-6">
                 <h2 class="text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-white leading-none">Anfragen Tracker</h2>
             </div>
 
@@ -297,38 +297,48 @@
             $exportUrl = 'export.php?' . http_build_query($exportParams);
             ?>
 
-            <div class="w-full flex flex-col items-start gap-3">
+            <div class="tracker-controls-row w-full flex flex-col items-start gap-3">
                 <form method="GET" class="time-filter-form w-full">
-                    <div class="time-filter-row">
-                        <div class="time-filter-field time-filter-field--range">
-                            <label for="time-range-select" class="time-filter-label">Zeitraum wählen</label>
-                            <select id="time-range-select" name="range" onchange="this.form.from.value=''; this.form.to.value=''; this.form.submit();" class="time-filter-select" aria-label="Zeitraum für Anfragen auswählen">
-                                <option value="1week" <?php echo $timeRange === '1week' ? 'selected' : ''; ?>>LETZTE WOCHE</option>
-                                <option value="1month" <?php echo $timeRange === '1month' ? 'selected' : ''; ?>>LETZTER MONAT</option>
-                                <option value="3months" <?php echo $timeRange === '3months' ? 'selected' : ''; ?>>3 MONATE</option>
-                                <option value="6months" <?php echo $timeRange === '6months' ? 'selected' : ''; ?>>6 MONATE</option>
-                                <option value="12months" <?php echo $timeRange === '12months' ? 'selected' : ''; ?>>12 MONATE</option>
-                                <option value="1year" <?php echo $timeRange === '1year' ? 'selected' : ''; ?>>LETZTES JAHR</option>
-                                <option value="3years" <?php echo $timeRange === '3years' ? 'selected' : ''; ?>>3 JAHRE</option>
-                                <option value="5years" <?php echo $timeRange === '5years' ? 'selected' : ''; ?>>5 JAHRE</option>
-                            </select>
+                    <div class="time-filter-stack">
+                        <div class="time-filter-block time-filter-block--fixed">
+                            <p class="time-filter-block-title">Fixer Zeitraum</p>
+                            <div class="time-filter-row time-filter-row--fixed">
+                                <div class="time-filter-field time-filter-field--range time-filter-field--full">
+                                    <label for="time-range-select" class="time-filter-label">Zeitraum wählen</label>
+                                    <select id="time-range-select" name="range" onchange="this.form.from.value=''; this.form.to.value=''; this.form.submit();" class="time-filter-select" aria-label="Zeitraum für Anfragen auswählen">
+                                        <option value="1week" <?php echo $timeRange === '1week' ? 'selected' : ''; ?>>LETZTE WOCHE</option>
+                                        <option value="1month" <?php echo $timeRange === '1month' ? 'selected' : ''; ?>>LETZTER MONAT</option>
+                                        <option value="3months" <?php echo $timeRange === '3months' ? 'selected' : ''; ?>>3 MONATE</option>
+                                        <option value="6months" <?php echo $timeRange === '6months' ? 'selected' : ''; ?>>6 MONATE</option>
+                                        <option value="12months" <?php echo $timeRange === '12months' ? 'selected' : ''; ?>>12 MONATE</option>
+                                        <option value="1year" <?php echo $timeRange === '1year' ? 'selected' : ''; ?>>LETZTES JAHR</option>
+                                        <option value="3years" <?php echo $timeRange === '3years' ? 'selected' : ''; ?>>3 JAHRE</option>
+                                        <option value="5years" <?php echo $timeRange === '5years' ? 'selected' : ''; ?>>5 JAHRE</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="time-filter-field">
-                            <label for="custom-from" class="time-filter-label">Von</label>
-                            <input id="custom-from" type="date" name="from" value="<?php echo htmlspecialchars($customFrom); ?>" class="time-filter-input">
-                        </div>
+                        <div class="time-filter-block time-filter-block--custom">
+                            <p class="time-filter-block-title">Individueller Zeitraum</p>
+                            <div class="time-filter-row time-filter-row--custom">
+                                <div class="time-filter-field">
+                                    <label for="custom-from" class="time-filter-label">Von</label>
+                                    <input id="custom-from" type="date" name="from" value="<?php echo htmlspecialchars($customFrom); ?>" class="time-filter-input">
+                                </div>
 
-                        <div class="time-filter-field">
-                            <label for="custom-to" class="time-filter-label">Bis</label>
-                            <input id="custom-to" type="date" name="to" value="<?php echo htmlspecialchars($customTo); ?>" class="time-filter-input">
-                        </div>
+                                <div class="time-filter-field">
+                                    <label for="custom-to" class="time-filter-label">Bis</label>
+                                    <input id="custom-to" type="date" name="to" value="<?php echo htmlspecialchars($customTo); ?>" class="time-filter-input">
+                                </div>
 
-                        <div class="time-filter-actions">
-                            <button type="submit" class="time-filter-btn">Zeitraum anwenden</button>
-                            <?php if (!empty($isCustomRange)): ?>
-                                <a href="?range=<?php echo urlencode($timeRange); ?>" class="time-filter-reset">Reset</a>
-                            <?php endif; ?>
+                                <div class="time-filter-actions">
+                                    <button type="submit" class="time-filter-btn">Zeitraum anwenden</button>
+                                    <?php if (!empty($isCustomRange)): ?>
+                                        <a href="?range=<?php echo urlencode($timeRange); ?>" class="time-filter-reset">Reset</a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </form>
