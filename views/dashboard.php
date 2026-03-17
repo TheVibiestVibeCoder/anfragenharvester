@@ -533,10 +533,9 @@
                                             <div class="akten-person-list">
                                                 <?php foreach (array_slice($submittedByPeople, 0, 8) as $person): ?>
                                                     <?php
-                                                    $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
                                                     $personName = isset($person['name']) ? trim((string) $person['name']) : '';
                                                     $personParty = isset($person['party_code']) ? trim((string) $person['party_code']) : '';
-                                                    $personPad = isset($person['pad']) ? trim((string) $person['pad']) : '';
+                                                    $personPartyName = $personParty !== '' && isset($partyMap[$personParty]) ? $partyMap[$personParty] : $personParty;
                                                     $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
                                                     if ($personName === '') {
                                                         continue;
@@ -544,9 +543,6 @@
                                                     ?>
                                                     <div class="akten-person-item">
                                                         <span class="akten-person-main">
-                                                            <?php if ($personFunction !== ''): ?>
-                                                                <span class="akten-person-fn"><?php echo htmlspecialchars($personFunction); ?>:</span>
-                                                            <?php endif; ?>
                                                             <?php if ($personUrl !== ''): ?>
                                                                 <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
                                                             <?php else: ?>
@@ -554,11 +550,8 @@
                                                             <?php endif; ?>
                                                         </span>
                                                         <span class="akten-person-meta">
-                                                            <?php if ($personParty !== ''): ?>
-                                                                <span>Fraktion: <?php echo htmlspecialchars($personParty); ?></span>
-                                                            <?php endif; ?>
-                                                            <?php if ($personPad !== ''): ?>
-                                                                <span>PAD: <?php echo htmlspecialchars($personPad); ?></span>
+                                                            <?php if ($personPartyName !== ''): ?>
+                                                                <span>Partei: <?php echo htmlspecialchars($personPartyName); ?></span>
                                                             <?php endif; ?>
                                                         </span>
                                                     </div>
@@ -572,10 +565,9 @@
                                             <div class="akten-person-list">
                                                 <?php foreach (array_slice($submittedToPeople, 0, 8) as $person): ?>
                                                     <?php
-                                                    $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
                                                     $personName = isset($person['name']) ? trim((string) $person['name']) : '';
                                                     $personParty = isset($person['party_code']) ? trim((string) $person['party_code']) : '';
-                                                    $personPad = isset($person['pad']) ? trim((string) $person['pad']) : '';
+                                                    $personPartyName = $personParty !== '' && isset($partyMap[$personParty]) ? $partyMap[$personParty] : $personParty;
                                                     $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
                                                     if ($personName === '') {
                                                         continue;
@@ -583,9 +575,6 @@
                                                     ?>
                                                     <div class="akten-person-item">
                                                         <span class="akten-person-main">
-                                                            <?php if ($personFunction !== ''): ?>
-                                                                <span class="akten-person-fn"><?php echo htmlspecialchars($personFunction); ?>:</span>
-                                                            <?php endif; ?>
                                                             <?php if ($personUrl !== ''): ?>
                                                                 <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
                                                             <?php else: ?>
@@ -593,11 +582,8 @@
                                                             <?php endif; ?>
                                                         </span>
                                                         <span class="akten-person-meta">
-                                                            <?php if ($personParty !== ''): ?>
-                                                                <span>Fraktion: <?php echo htmlspecialchars($personParty); ?></span>
-                                                            <?php endif; ?>
-                                                            <?php if ($personPad !== ''): ?>
-                                                                <span>PAD: <?php echo htmlspecialchars($personPad); ?></span>
+                                                            <?php if ($personPartyName !== ''): ?>
+                                                                <span>Partei: <?php echo htmlspecialchars($personPartyName); ?></span>
                                                             <?php endif; ?>
                                                         </span>
                                                     </div>
@@ -966,32 +952,32 @@
                 .replace(/'/g, '&#39;');
         }
 
+        const personPartyMap = <?php echo json_encode($partyMap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
         function buildPeopleHtml(people) {
             if (!Array.isArray(people) || people.length === 0) {
                 return '';
             }
 
             const rows = people.slice(0, 6).map(function(person) {
-                const fn = escapeHtml(person.function || '');
                 const name = escapeHtml(person.name || '');
-                const party = escapeHtml(person.party_code || '');
-                const pad = escapeHtml(person.pad || '');
+                const partyCode = String(person.party_code || '').trim();
+                const partyLabel = partyCode && personPartyMap[partyCode] ? personPartyMap[partyCode] : partyCode;
+                const party = escapeHtml(partyLabel);
                 const url = escapeHtml(person.url || '');
                 if (!name) {
                     return '';
                 }
 
                 const nameHtml = url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500">${name}</a>` : name;
-                const partyHtml = party ? `<span>Fraktion: ${party}</span>` : '';
-                const padHtml = pad ? `<span>PAD: ${pad}</span>` : '';
+                const partyHtml = party ? `<span>Partei: ${party}</span>` : '';
 
                 return `
                     <div class="akten-person-item">
                         <span class="akten-person-main">
-                            ${fn ? `<span class="akten-person-fn">${fn}:</span>` : ''}
                             ${nameHtml}
                         </span>
-                        <span class="akten-person-meta">${partyHtml}${padHtml}</span>
+                        <span class="akten-person-meta">${partyHtml}</span>
                     </div>
                 `;
             }).join('');
