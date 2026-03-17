@@ -188,7 +188,7 @@
                 },
                 "datePublished": "<?php echo date('c', strtotime('-1 year')); ?>",
                 "dateModified": "<?php echo date('c'); ?>",
-                "temporalCoverage": "<?php echo $cutoffDate->format('Y-m-d'); ?>/<?php echo $now->format('Y-m-d'); ?>",
+                "temporalCoverage": "<?php echo $cutoffDate->format('Y-m-d'); ?>/<?php echo $endDate->format('Y-m-d'); ?>",
                 "distribution": {
                     "@type": "DataDownload",
                     "contentUrl": "<?php echo htmlspecialchars($currentUrl); ?>",
@@ -301,7 +301,7 @@
                 <form method="GET" class="w-full lg:w-auto">
                     <div class="flex flex-col items-start w-full">
                         <label for="time-range-select" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Zeitraum wählen</label>
-                        <select id="time-range-select" name="range" onchange="this.form.submit()" class="w-full lg:w-auto" aria-label="Zeitraum für Anfragen auswählen">
+                        <select id="time-range-select" name="range" onchange="this.form.from.value=''; this.form.to.value=''; this.form.submit();" class="w-full lg:w-auto" aria-label="Zeitraum für Anfragen auswählen">
                             <option value="1week" <?php echo $timeRange === '1week' ? 'selected' : ''; ?>>LETZTE WOCHE</option>
                             <option value="1month" <?php echo $timeRange === '1month' ? 'selected' : ''; ?>>LETZTER MONAT</option>
                             <option value="3months" <?php echo $timeRange === '3months' ? 'selected' : ''; ?>>3 MONATE</option>
@@ -311,6 +311,28 @@
                             <option value="3years" <?php echo $timeRange === '3years' ? 'selected' : ''; ?>>3 JAHRE</option>
                             <option value="5years" <?php echo $timeRange === '5years' ? 'selected' : ''; ?>>5 JAHRE</option>
                         </select>
+                    </div>
+
+                    <div class="mt-3 w-full">
+                        <label class="text-[10px] uppercase tracking-widest text-gray-500 mb-1 block">Individueller Zeitraum</label>
+                        <div class="flex flex-wrap items-end gap-2">
+                            <div class="flex flex-col">
+                                <label for="custom-from" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Von</label>
+                                <input id="custom-from" type="date" name="from" value="<?php echo htmlspecialchars($customFrom); ?>" class="w-full lg:w-auto">
+                            </div>
+                            <div class="flex flex-col">
+                                <label for="custom-to" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Bis</label>
+                                <input id="custom-to" type="date" name="to" value="<?php echo htmlspecialchars($customTo); ?>" class="w-full lg:w-auto">
+                            </div>
+                            <button type="submit" class="inline-flex items-center border border-white text-white px-3 py-2 text-xs font-mono uppercase tracking-wide hover:bg-white hover:text-black transition-colors">
+                                Zeitraum anwenden
+                            </button>
+                            <?php if (!empty($isCustomRange)): ?>
+                                <a href="?range=<?php echo urlencode($timeRange); ?>" class="inline-flex items-center border border-gray-600 text-gray-300 px-3 py-2 text-xs font-mono uppercase tracking-wide hover:border-gray-400 hover:text-white transition-colors">
+                                    Reset
+                                </a>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </form>
 
@@ -657,9 +679,19 @@
             <?php endif; ?>
 
             <?php if ($totalPages > 1): ?>
+                <?php
+                $paginationParams = ['range' => $timeRange];
+                if ($customFrom !== '') {
+                    $paginationParams['from'] = $customFrom;
+                }
+                if ($customTo !== '') {
+                    $paginationParams['to'] = $customTo;
+                }
+                ?>
                 <div class="flex flex-wrap justify-center gap-2 md:gap-4 mt-12 md:mt-16">
                     <?php if ($page > 1): ?>
-                        <a href="?range=<?php echo $timeRange; ?>&page=<?php echo $page - 1; ?>" class="pag-btn">&larr; Zurück</a>
+                        <?php $prevQuery = http_build_query(array_merge($paginationParams, ['page' => $page - 1])); ?>
+                        <a href="?<?php echo htmlspecialchars($prevQuery); ?>" class="pag-btn">&larr; Zurück</a>
                     <?php endif; ?>
 
                     <?php 
@@ -667,13 +699,15 @@
                     $end = min($totalPages, $page + 2);
                     for ($i = $start; $i <= $end; $i++):
                     ?>
-                        <a href="?range=<?php echo $timeRange; ?>&page=<?php echo $i; ?>" class="pag-btn <?php echo $i === $page ? 'active' : ''; ?>">
+                        <?php $pageQuery = http_build_query(array_merge($paginationParams, ['page' => $i])); ?>
+                        <a href="?<?php echo htmlspecialchars($pageQuery); ?>" class="pag-btn <?php echo $i === $page ? 'active' : ''; ?>">
                             <?php echo $i; ?>
                         </a>
                     <?php endfor; ?>
 
                     <?php if ($page < $totalPages): ?>
-                        <a href="?range=<?php echo $timeRange; ?>&page=<?php echo $page + 1; ?>" class="pag-btn">Weiter &rarr;</a>
+                        <?php $nextQuery = http_build_query(array_merge($paginationParams, ['page' => $page + 1])); ?>
+                        <a href="?<?php echo htmlspecialchars($nextQuery); ?>" class="pag-btn">Weiter &rarr;</a>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
