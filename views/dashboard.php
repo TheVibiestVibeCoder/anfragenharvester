@@ -463,46 +463,28 @@
                         $eurovoc = isset($akten['eurovoc']) && is_array($akten['eurovoc']) ? $akten['eurovoc'] : [];
                         $stageOrder = isset($akten['stage_order']) && is_array($akten['stage_order']) ? $akten['stage_order'] : ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
                         $stageMap = isset($akten['stages']) && is_array($akten['stages']) ? $akten['stages'] : [];
-                        $aktenSource = isset($akten['source']) ? (string) $akten['source'] : 'fallback';
                         $currentStageLabel = isset($akten['current_stage_label']) ? trim((string) $akten['current_stage_label']) : '';
                         if ($currentStageLabel === '') {
                             $currentStageLabel = !empty($result['answered']) ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat';
                         }
 
-                        $involvedNames = [];
-                        $submittedByNames = [];
-                        $submittedToNames = [];
                         $submittedByPeople = [];
                         $submittedToPeople = [];
                         foreach ($people as $person) {
                             if (!is_array($person)) {
                                 continue;
                             }
-                            $personName = trim((string) (isset($person['name']) ? $person['name'] : ''));
-                            if ($personName !== '' && !in_array($personName, $involvedNames, true)) {
-                                $involvedNames[] = $personName;
-                            }
-
                             $hasGovFlag = array_key_exists('is_government', $person);
                             $isGovernment = $hasGovFlag ? !empty($person['is_government']) : false;
                             $personRole = trim((string) (isset($person['role']) ? $person['role'] : ''));
 
                             if (($hasGovFlag && $isGovernment) || (!$hasGovFlag && $personRole === 'recipient')) {
                                 $submittedToPeople[] = $person;
-                                if ($personName !== '' && !in_array($personName, $submittedToNames, true)) {
-                                    $submittedToNames[] = $personName;
-                                }
                                 continue;
                             }
 
                             $submittedByPeople[] = $person;
-                            if ($personName !== '' && !in_array($personName, $submittedByNames, true)) {
-                                $submittedByNames[] = $personName;
-                            }
                         }
-                        $involvedSummary = !empty($involvedNames) ? implode(', ', $involvedNames) : 'Nicht verfügbar';
-                        $submittedBySummary = !empty($submittedByNames) ? implode(', ', $submittedByNames) : 'Nicht verfügbar';
-                        $submittedToSummary = !empty($submittedToNames) ? implode(', ', $submittedToNames) : 'Nicht verfügbar';
                         $aktenKey = isset($result['akten_key']) ? trim((string) $result['akten_key']) : '';
                         if ($aktenKey === '') {
                             $dateIso = isset($result['date_obj']) && $result['date_obj'] instanceof DateTime ? $result['date_obj']->format('Y-m-d') : '';
@@ -539,18 +521,6 @@
                                     <div class="akten-meta-line">
                                         <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
                                         <span class="akten-meta-value akten-status-pill"><?php echo htmlspecialchars($currentStageLabel); ?></span>
-                                    </div>
-                                    <div class="akten-meta-line">
-                                        <span class="akten-meta-label">Involvierte Personen</span>
-                                        <span class="akten-meta-value"><?php echo htmlspecialchars($involvedSummary); ?></span>
-                                    </div>
-                                    <div class="akten-meta-line">
-                                        <span class="akten-meta-label">Eingebracht von</span>
-                                        <span class="akten-meta-value"><?php echo htmlspecialchars($submittedBySummary); ?></span>
-                                    </div>
-                                    <div class="akten-meta-line">
-                                        <span class="akten-meta-label">Eingebracht an</span>
-                                        <span class="akten-meta-value"><?php echo htmlspecialchars($submittedToSummary); ?></span>
                                     </div>
                                     <?php if (!empty($submittedByPeople)): ?>
                                         <div class="akten-chip-row">
@@ -628,12 +598,6 @@
                                                     </div>
                                                 <?php endforeach; ?>
                                             </div>
-                                        </div>
-                                    <?php endif; ?>
-                                    <?php if ($aktenSource !== 'geschichtsseite'): ?>
-                                        <div class="akten-meta-line">
-                                            <span class="akten-meta-label">Datenquelle</span>
-                                            <span class="akten-meta-value">Listen-API (Fallback)</span>
                                         </div>
                                     <?php endif; ?>
 
@@ -1093,41 +1057,7 @@
             const split = splitPeopleByGovernment(people);
             const submittedByPeople = split.by;
             const submittedToPeople = split.to;
-
-            const names = [];
-            people.forEach(function(person) {
-                const name = (person && person.name) ? String(person.name).trim() : '';
-                if (!name || names.indexOf(name) !== -1) {
-                    return;
-                }
-                names.push(name);
-            });
-
-            const submittedByNames = [];
-            submittedByPeople.forEach(function(person) {
-                const name = (person && person.name) ? String(person.name).trim() : '';
-                if (!name || submittedByNames.indexOf(name) !== -1) {
-                    return;
-                }
-                submittedByNames.push(name);
-            });
-
-            const submittedToNames = [];
-            submittedToPeople.forEach(function(person) {
-                const name = (person && person.name) ? String(person.name).trim() : '';
-                if (!name || submittedToNames.indexOf(name) !== -1) {
-                    return;
-                }
-                submittedToNames.push(name);
-            });
-
-            const involvedSummary = names.length ? names.join(', ') : 'Nicht verfügbar';
-            const submittedBySummary = submittedByNames.length ? submittedByNames.join(', ') : 'Nicht verfügbar';
-            const submittedToSummary = submittedToNames.length ? submittedToNames.join(', ') : 'Nicht verfügbar';
             const currentStageLabel = akten.current_stage_label || 'Einlangen im Nationalrat';
-            const sourceHtml = akten.source !== 'geschichtsseite'
-                ? '<div class="akten-meta-line"><span class="akten-meta-label">Datenquelle</span><span class="akten-meta-value">Listen-API (Fallback)</span></div>'
-                : '';
 
             const submittedByList = submittedByPeople.length ? `
                 <div class="akten-chip-row">
@@ -1148,19 +1078,6 @@
                     <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
                     <span class="akten-meta-value akten-status-pill">${escapeHtml(currentStageLabel)}</span>
                 </div>
-                <div class="akten-meta-line">
-                    <span class="akten-meta-label">Involvierte Personen</span>
-                    <span class="akten-meta-value">${escapeHtml(involvedSummary)}</span>
-                </div>
-                <div class="akten-meta-line">
-                    <span class="akten-meta-label">Eingebracht von</span>
-                    <span class="akten-meta-value">${escapeHtml(submittedBySummary)}</span>
-                </div>
-                <div class="akten-meta-line">
-                    <span class="akten-meta-label">Eingebracht an</span>
-                    <span class="akten-meta-value">${escapeHtml(submittedToSummary)}</span>
-                </div>
-                ${sourceHtml}
                 ${submittedByList}
                 ${submittedToList}
                 <div class="akten-stages">${buildStageHtml(akten)}</div>
