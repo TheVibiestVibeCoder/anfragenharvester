@@ -1212,6 +1212,33 @@ body.dashboard-page {
     font-size: 0.64rem;
 }
 
+.akten-doc-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.38rem;
+}
+
+.akten-doc-btn {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(23, 77, 55, 0.24);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--freda-deep);
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    line-height: 1.1;
+    padding: 0.28rem 0.58rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.akten-doc-btn:hover {
+    background: rgba(47, 127, 73, 0.1);
+    border-color: rgba(23, 77, 55, 0.42);
+    color: #103427;
+}
+
 .pag-btn {
     border-radius: 999px;
     border-color: rgba(29, 47, 38, 0.18);

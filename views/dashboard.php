@@ -458,8 +458,7 @@
                         <?php
                         $akten = isset($result['akten']) && is_array($result['akten']) ? $result['akten'] : [];
                         $people = isset($akten['people']) && is_array($akten['people']) ? $akten['people'] : [];
-                        $initiators = isset($akten['initiators']) && is_array($akten['initiators']) ? $akten['initiators'] : [];
-                        $recipients = isset($akten['recipients']) && is_array($akten['recipients']) ? $akten['recipients'] : [];
+                        $documents = isset($akten['documents']) && is_array($akten['documents']) ? $akten['documents'] : [];
                         $topics = isset($akten['topics']) && is_array($akten['topics']) ? $akten['topics'] : [];
                         $headwords = isset($akten['headwords']) && is_array($akten['headwords']) ? $akten['headwords'] : [];
                         $eurovoc = isset($akten['eurovoc']) && is_array($akten['eurovoc']) ? $akten['eurovoc'] : [];
@@ -471,31 +470,18 @@
                             $currentStageLabel = !empty($result['answered']) ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat';
                         }
 
-                        $initiatorNames = [];
-                        foreach ($initiators as $initiator) {
-                            if (!is_array($initiator)) {
+                        $involvedNames = [];
+                        foreach ($people as $person) {
+                            if (!is_array($person)) {
                                 continue;
                             }
-                            $initiatorName = trim((string) (isset($initiator['name']) ? $initiator['name'] : ''));
-                            if ($initiatorName === '') {
+                            $personName = trim((string) (isset($person['name']) ? $person['name'] : ''));
+                            if ($personName === '' || in_array($personName, $involvedNames, true)) {
                                 continue;
                             }
-                            $initiatorNames[] = $initiatorName;
+                            $involvedNames[] = $personName;
                         }
-                        $initiatorSummary = !empty($initiatorNames) ? implode(', ', $initiatorNames) : 'Nicht verfügbar';
-
-                        $recipientNames = [];
-                        foreach ($recipients as $recipient) {
-                            if (!is_array($recipient)) {
-                                continue;
-                            }
-                            $recipientName = trim((string) (isset($recipient['name']) ? $recipient['name'] : ''));
-                            if ($recipientName === '') {
-                                continue;
-                            }
-                            $recipientNames[] = $recipientName;
-                        }
-                        $recipientSummary = !empty($recipientNames) ? implode(', ', $recipientNames) : 'Nicht verfügbar';
+                        $involvedSummary = !empty($involvedNames) ? implode(', ', $involvedNames) : 'Nicht verfügbar';
 
                         $aktenKey = isset($result['akten_key']) ? trim((string) $result['akten_key']) : '';
                         if ($aktenKey === '') {
@@ -535,18 +521,14 @@
                                         <span class="akten-meta-value akten-status-pill"><?php echo htmlspecialchars($currentStageLabel); ?></span>
                                     </div>
                                     <div class="akten-meta-line">
-                                        <span class="akten-meta-label">Anfragesteller:innen (Parlament)</span>
-                                        <span class="akten-meta-value"><?php echo htmlspecialchars($initiatorSummary); ?></span>
+                                        <span class="akten-meta-label">Involvierte Personen</span>
+                                        <span class="akten-meta-value"><?php echo htmlspecialchars($involvedSummary); ?></span>
                                     </div>
-                                    <div class="akten-meta-line">
-                                        <span class="akten-meta-label">Gerichtet an (Regierung)</span>
-                                        <span class="akten-meta-value"><?php echo htmlspecialchars($recipientSummary); ?></span>
-                                    </div>
-                                    <?php if (!empty($initiators)): ?>
+                                    <?php if (!empty($people)): ?>
                                         <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Anfragesteller:innen (Parlament)</span>
+                                            <span class="akten-chip-label">Involvierte Personen</span>
                                             <div class="akten-person-list">
-                                                <?php foreach (array_slice($initiators, 0, 6) as $person): ?>
+                                                <?php foreach (array_slice($people, 0, 8) as $person): ?>
                                                     <?php
                                                     $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
                                                     $personName = isset($person['name']) ? trim((string) $person['name']) : '';
@@ -563,7 +545,7 @@
                                                                 <span class="akten-person-fn"><?php echo htmlspecialchars($personFunction); ?>:</span>
                                                             <?php endif; ?>
                                                             <?php if ($personUrl !== ''): ?>
-                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
+                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
                                                             <?php else: ?>
                                                                 <?php echo htmlspecialchars($personName); ?>
                                                             <?php endif; ?>
@@ -581,41 +563,29 @@
                                             </div>
                                         </div>
                                     <?php endif; ?>
-                                    <?php if (!empty($recipients)): ?>
+                                    <?php if (!empty($documents)): ?>
                                         <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Adressat:innen in der Regierung</span>
-                                            <div class="akten-person-list">
-                                                <?php foreach (array_slice($recipients, 0, 6) as $person): ?>
+                                            <span class="akten-chip-label">Dokumente</span>
+                                            <div class="akten-doc-list">
+                                                <?php foreach (array_slice($documents, 0, 8) as $document): ?>
                                                     <?php
-                                                    $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
-                                                    $personName = isset($person['name']) ? trim((string) $person['name']) : '';
-                                                    $personParty = isset($person['party_code']) ? trim((string) $person['party_code']) : '';
-                                                    $personPad = isset($person['pad']) ? trim((string) $person['pad']) : '';
-                                                    $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
-                                                    if ($personName === '') {
+                                                    $docTitle = isset($document['title']) ? trim((string) $document['title']) : '';
+                                                    $docType = isset($document['type']) ? trim((string) $document['type']) : '';
+                                                    $docLink = isset($document['link']) ? trim((string) $document['link']) : '';
+                                                    if ($docLink === '') {
                                                         continue;
                                                     }
+
+                                                    $docLabel = 'Dokument';
+                                                    if ($docType !== '' && $docTitle !== '') {
+                                                        $docLabel = $docType . ' - ' . $docTitle;
+                                                    } elseif ($docType !== '') {
+                                                        $docLabel = $docType;
+                                                    } elseif ($docTitle !== '') {
+                                                        $docLabel = $docTitle;
+                                                    }
                                                     ?>
-                                                    <div class="akten-person-item">
-                                                        <span class="akten-person-main">
-                                                            <?php if ($personFunction !== ''): ?>
-                                                                <span class="akten-person-fn"><?php echo htmlspecialchars($personFunction); ?>:</span>
-                                                            <?php endif; ?>
-                                                            <?php if ($personUrl !== ''): ?>
-                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
-                                                            <?php else: ?>
-                                                                <?php echo htmlspecialchars($personName); ?>
-                                                            <?php endif; ?>
-                                                        </span>
-                                                        <span class="akten-person-meta">
-                                                            <?php if ($personParty !== ''): ?>
-                                                                <span>Fraktion: <?php echo htmlspecialchars($personParty); ?></span>
-                                                            <?php endif; ?>
-                                                            <?php if ($personPad !== ''): ?>
-                                                                <span>PAD: <?php echo htmlspecialchars($personPad); ?></span>
-                                                            <?php endif; ?>
-                                                        </span>
-                                                    </div>
+                                                    <a href="<?php echo htmlspecialchars($docLink); ?>" target="_blank" rel="noopener noreferrer" class="akten-doc-btn"><?php echo htmlspecialchars($docLabel); ?></a>
                                                 <?php endforeach; ?>
                                             </div>
                                         </div>
@@ -1002,7 +972,7 @@
                     return '';
                 }
 
-                const nameHtml = url ? `<a href="${url}" target="_blank" class="underline decoration-1 underline-offset-2 decoration-gray-500">${name}</a>` : name;
+                const nameHtml = url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500">${name}</a>` : name;
                 const partyHtml = party ? `<span>Fraktion: ${party}</span>` : '';
                 const padHtml = pad ? `<span>PAD: ${pad}</span>` : '';
 
@@ -1018,6 +988,36 @@
             }).join('');
 
             return rows ? `<div class="akten-person-list">${rows}</div>` : '';
+        }
+
+        function buildDocumentsHtml(documents) {
+            if (!Array.isArray(documents) || documents.length === 0) {
+                return '';
+            }
+
+            const links = documents.slice(0, 8).map(function(document) {
+                const link = escapeHtml(document.link || '');
+                if (!link) {
+                    return '';
+                }
+
+                const title = escapeHtml(document.title || '');
+                const type = escapeHtml(document.type || '');
+                const label = (type && title) ? `${type} - ${title}` : (type || title || 'Dokument');
+
+                return `<a href="${link}" target="_blank" rel="noopener noreferrer" class="akten-doc-btn">${label}</a>`;
+            }).join('');
+
+            if (!links) {
+                return '';
+            }
+
+            return `
+                <div class="akten-chip-row">
+                    <span class="akten-chip-label">Dokumente</span>
+                    <div class="akten-doc-list">${links}</div>
+                </div>
+            `;
         }
 
         function buildStageHtml(akten) {
@@ -1054,28 +1054,29 @@
         }
 
         function renderAktenMetaBlock(akten) {
-            const initiators = Array.isArray(akten.initiators) ? akten.initiators : [];
-            const recipients = Array.isArray(akten.recipients) ? akten.recipients : [];
-            const initiatorSummary = initiators.length ? initiators.map(function(p) { return p.name || ''; }).filter(Boolean).join(', ') : 'Nicht verfügbar';
-            const recipientSummary = recipients.length ? recipients.map(function(p) { return p.name || ''; }).filter(Boolean).join(', ') : 'Nicht verfügbar';
+            const people = Array.isArray(akten.people) ? akten.people : [];
+            const names = [];
+            people.forEach(function(person) {
+                const name = (person && person.name) ? String(person.name).trim() : '';
+                if (!name || names.indexOf(name) !== -1) {
+                    return;
+                }
+                names.push(name);
+            });
+            const involvedSummary = names.length ? names.join(', ') : 'Nicht verfügbar';
             const currentStageLabel = akten.current_stage_label || 'Einlangen im Nationalrat';
             const sourceHtml = akten.source !== 'geschichtsseite'
                 ? '<div class="akten-meta-line"><span class="akten-meta-label">Datenquelle</span><span class="akten-meta-value">Listen-API (Fallback)</span></div>'
                 : '';
 
-            const initiatorList = initiators.length ? `
+            const peopleList = people.length ? `
                 <div class="akten-chip-row">
-                    <span class="akten-chip-label">Anfragesteller:innen (Parlament)</span>
-                    ${buildPeopleHtml(initiators)}
+                    <span class="akten-chip-label">Involvierte Personen</span>
+                    ${buildPeopleHtml(people)}
                 </div>
             ` : '';
 
-            const recipientList = recipients.length ? `
-                <div class="akten-chip-row">
-                    <span class="akten-chip-label">Adressat:innen in der Regierung</span>
-                    ${buildPeopleHtml(recipients)}
-                </div>
-            ` : '';
+            const documentsList = buildDocumentsHtml(akten.documents || []);
 
             return `
                 <div class="akten-meta-line">
@@ -1083,16 +1084,12 @@
                     <span class="akten-meta-value akten-status-pill">${escapeHtml(currentStageLabel)}</span>
                 </div>
                 <div class="akten-meta-line">
-                    <span class="akten-meta-label">Anfragesteller:innen (Parlament)</span>
-                    <span class="akten-meta-value">${escapeHtml(initiatorSummary)}</span>
-                </div>
-                <div class="akten-meta-line">
-                    <span class="akten-meta-label">Gerichtet an (Regierung)</span>
-                    <span class="akten-meta-value">${escapeHtml(recipientSummary)}</span>
+                    <span class="akten-meta-label">Involvierte Personen</span>
+                    <span class="akten-meta-value">${escapeHtml(involvedSummary)}</span>
                 </div>
                 ${sourceHtml}
-                ${initiatorList}
-                ${recipientList}
+                ${peopleList}
+                ${documentsList}
                 <div class="akten-stages">${buildStageHtml(akten)}</div>
                 ${buildChipRow('Themen', akten.topics || [])}
                 ${buildChipRow('Schlagwörter', akten.headwords || [])}

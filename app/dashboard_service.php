@@ -298,7 +298,7 @@ function app_enrich_results_for_akten(array $results, $cache) {
             continue;
         }
 
-        $historyCacheKey = 'geschichtsseite_v2_' . md5((string) ($result['link'] ?? ''));
+        $historyCacheKey = 'geschichtsseite_v3_' . md5((string) ($result['link'] ?? ''));
         $aktenData = $cache->get($historyCacheKey);
 
         if (!is_array($aktenData)) {
@@ -374,6 +374,7 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
     $topics = app_collect_bubble_labels(isset($content['topics']) ? $content['topics'] : null);
     $headwords = app_collect_bubble_labels(isset($content['headwords']) ? $content['headwords'] : null);
     $eurovoc = app_collect_bubble_labels(isset($content['eurovoc']) ? $content['eurovoc'] : null);
+    $documents = app_collect_akten_documents(isset($content['documents']) ? $content['documents'] : null);
 
     if (empty($topics)) {
         $topics = app_parse_jsonish_list(isset($result['topics']) ? $result['topics'] : []);
@@ -428,6 +429,7 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
         'topics' => $topics,
         'headwords' => $headwords,
         'eurovoc' => $eurovoc,
+        'documents' => $documents,
         'stages' => $stages,
         'stage_order' => ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'],
         'stages_raw' => $stagesRaw
@@ -569,6 +571,7 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
         'topics' => app_parse_jsonish_list(isset($result['topics']) ? $result['topics'] : []),
         'headwords' => app_parse_jsonish_list(isset($result['headwords']) ? $result['headwords'] : []),
         'eurovoc' => app_parse_jsonish_list(isset($result['eurovoc']) ? $result['eurovoc'] : []),
+        'documents' => [],
         'stages' => $stages,
         'stage_order' => ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'],
         'stages_raw' => []
@@ -598,6 +601,56 @@ function app_collect_bubble_labels($node) {
     }
 
     return $labels;
+}
+
+function app_collect_akten_documents($node) {
+    if (!is_array($node)) {
+        return [];
+    }
+
+    $documents = [];
+    $seen = [];
+
+    foreach ($node as $group) {
+        if (!is_array($group)) {
+            continue;
+        }
+
+        $groupTitle = trim((string) (isset($group['title']) ? $group['title'] : ''));
+        $groupDocuments = [];
+
+        if (isset($group['documents']) && is_array($group['documents'])) {
+            $groupDocuments = $group['documents'];
+        } elseif (isset($group['link'])) {
+            $groupDocuments = [$group];
+        }
+
+        foreach ($groupDocuments as $document) {
+            if (!is_array($document)) {
+                continue;
+            }
+
+            $link = app_parliament_make_absolute_url(isset($document['link']) ? $document['link'] : '');
+            if ($link === '') {
+                continue;
+            }
+
+            $type = trim((string) (isset($document['type']) ? $document['type'] : ''));
+            $dedupeKey = $link . '|' . mb_strtolower($type, 'UTF-8') . '|' . mb_strtolower($groupTitle, 'UTF-8');
+            if (isset($seen[$dedupeKey])) {
+                continue;
+            }
+            $seen[$dedupeKey] = true;
+
+            $documents[] = [
+                'title' => $groupTitle,
+                'type' => mb_strtoupper($type, 'UTF-8'),
+                'link' => $link
+            ];
+        }
+    }
+
+    return $documents;
 }
 
 function app_default_akten_stages() {
