@@ -470,18 +470,39 @@
                         }
 
                         $involvedNames = [];
+                        $submittedByNames = [];
+                        $submittedToNames = [];
+                        $submittedByPeople = [];
+                        $submittedToPeople = [];
                         foreach ($people as $person) {
                             if (!is_array($person)) {
                                 continue;
                             }
                             $personName = trim((string) (isset($person['name']) ? $person['name'] : ''));
-                            if ($personName === '' || in_array($personName, $involvedNames, true)) {
+                            if ($personName !== '' && !in_array($personName, $involvedNames, true)) {
+                                $involvedNames[] = $personName;
+                            }
+
+                            $hasGovFlag = array_key_exists('is_government', $person);
+                            $isGovernment = $hasGovFlag ? !empty($person['is_government']) : false;
+                            $personRole = trim((string) (isset($person['role']) ? $person['role'] : ''));
+
+                            if (($hasGovFlag && $isGovernment) || (!$hasGovFlag && $personRole === 'recipient')) {
+                                $submittedToPeople[] = $person;
+                                if ($personName !== '' && !in_array($personName, $submittedToNames, true)) {
+                                    $submittedToNames[] = $personName;
+                                }
                                 continue;
                             }
-                            $involvedNames[] = $personName;
+
+                            $submittedByPeople[] = $person;
+                            if ($personName !== '' && !in_array($personName, $submittedByNames, true)) {
+                                $submittedByNames[] = $personName;
+                            }
                         }
                         $involvedSummary = !empty($involvedNames) ? implode(', ', $involvedNames) : 'Nicht verfügbar';
-
+                        $submittedBySummary = !empty($submittedByNames) ? implode(', ', $submittedByNames) : 'Nicht verfügbar';
+                        $submittedToSummary = !empty($submittedToNames) ? implode(', ', $submittedToNames) : 'Nicht verfügbar';
                         $aktenKey = isset($result['akten_key']) ? trim((string) $result['akten_key']) : '';
                         if ($aktenKey === '') {
                             $dateIso = isset($result['date_obj']) && $result['date_obj'] instanceof DateTime ? $result['date_obj']->format('Y-m-d') : '';
@@ -523,11 +544,58 @@
                                         <span class="akten-meta-label">Involvierte Personen</span>
                                         <span class="akten-meta-value"><?php echo htmlspecialchars($involvedSummary); ?></span>
                                     </div>
-                                    <?php if (!empty($people)): ?>
+                                    <div class="akten-meta-line">
+                                        <span class="akten-meta-label">Eingebracht von</span>
+                                        <span class="akten-meta-value"><?php echo htmlspecialchars($submittedBySummary); ?></span>
+                                    </div>
+                                    <div class="akten-meta-line">
+                                        <span class="akten-meta-label">Eingebracht an</span>
+                                        <span class="akten-meta-value"><?php echo htmlspecialchars($submittedToSummary); ?></span>
+                                    </div>
+                                    <?php if (!empty($submittedByPeople)): ?>
                                         <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Involvierte Personen</span>
+                                            <span class="akten-chip-label">Eingebracht von</span>
                                             <div class="akten-person-list">
-                                                <?php foreach (array_slice($people, 0, 8) as $person): ?>
+                                                <?php foreach (array_slice($submittedByPeople, 0, 8) as $person): ?>
+                                                    <?php
+                                                    $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
+                                                    $personName = isset($person['name']) ? trim((string) $person['name']) : '';
+                                                    $personParty = isset($person['party_code']) ? trim((string) $person['party_code']) : '';
+                                                    $personPad = isset($person['pad']) ? trim((string) $person['pad']) : '';
+                                                    $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
+                                                    if ($personName === '') {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <div class="akten-person-item">
+                                                        <span class="akten-person-main">
+                                                            <?php if ($personFunction !== ''): ?>
+                                                                <span class="akten-person-fn"><?php echo htmlspecialchars($personFunction); ?>:</span>
+                                                            <?php endif; ?>
+                                                            <?php if ($personUrl !== ''): ?>
+                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
+                                                            <?php else: ?>
+                                                                <?php echo htmlspecialchars($personName); ?>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                        <span class="akten-person-meta">
+                                                            <?php if ($personParty !== ''): ?>
+                                                                <span>Fraktion: <?php echo htmlspecialchars($personParty); ?></span>
+                                                            <?php endif; ?>
+                                                            <?php if ($personPad !== ''): ?>
+                                                                <span>PAD: <?php echo htmlspecialchars($personPad); ?></span>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($submittedToPeople)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Eingebracht an</span>
+                                            <div class="akten-person-list">
+                                                <?php foreach (array_slice($submittedToPeople, 0, 8) as $person): ?>
                                                     <?php
                                                     $personFunction = isset($person['function']) ? trim((string) $person['function']) : '';
                                                     $personName = isset($person['name']) ? trim((string) $person['name']) : '';
@@ -995,8 +1063,37 @@
             `;
         }
 
+        function splitPeopleByGovernment(people) {
+            const by = [];
+            const to = [];
+
+            (Array.isArray(people) ? people : []).forEach(function(person) {
+                if (!person || typeof person !== 'object') {
+                    return;
+                }
+
+                const hasGovFlag = Object.prototype.hasOwnProperty.call(person, 'is_government');
+                const govValue = person.is_government;
+                const isGovernment = govValue === true || govValue === 1 || govValue === '1' || String(govValue).toLowerCase() === 'true';
+                const role = String(person.role || '').trim().toLowerCase();
+
+                if ((hasGovFlag && isGovernment) || (!hasGovFlag && role === 'recipient')) {
+                    to.push(person);
+                    return;
+                }
+
+                by.push(person);
+            });
+
+            return { by: by, to: to };
+        }
+
         function renderAktenMetaBlock(akten) {
             const people = Array.isArray(akten.people) ? akten.people : [];
+            const split = splitPeopleByGovernment(people);
+            const submittedByPeople = split.by;
+            const submittedToPeople = split.to;
+
             const names = [];
             people.forEach(function(person) {
                 const name = (person && person.name) ? String(person.name).trim() : '';
@@ -1005,16 +1102,44 @@
                 }
                 names.push(name);
             });
+
+            const submittedByNames = [];
+            submittedByPeople.forEach(function(person) {
+                const name = (person && person.name) ? String(person.name).trim() : '';
+                if (!name || submittedByNames.indexOf(name) !== -1) {
+                    return;
+                }
+                submittedByNames.push(name);
+            });
+
+            const submittedToNames = [];
+            submittedToPeople.forEach(function(person) {
+                const name = (person && person.name) ? String(person.name).trim() : '';
+                if (!name || submittedToNames.indexOf(name) !== -1) {
+                    return;
+                }
+                submittedToNames.push(name);
+            });
+
             const involvedSummary = names.length ? names.join(', ') : 'Nicht verfügbar';
+            const submittedBySummary = submittedByNames.length ? submittedByNames.join(', ') : 'Nicht verfügbar';
+            const submittedToSummary = submittedToNames.length ? submittedToNames.join(', ') : 'Nicht verfügbar';
             const currentStageLabel = akten.current_stage_label || 'Einlangen im Nationalrat';
             const sourceHtml = akten.source !== 'geschichtsseite'
                 ? '<div class="akten-meta-line"><span class="akten-meta-label">Datenquelle</span><span class="akten-meta-value">Listen-API (Fallback)</span></div>'
                 : '';
 
-            const peopleList = people.length ? `
+            const submittedByList = submittedByPeople.length ? `
                 <div class="akten-chip-row">
-                    <span class="akten-chip-label">Involvierte Personen</span>
-                    ${buildPeopleHtml(people)}
+                    <span class="akten-chip-label">Eingebracht von</span>
+                    ${buildPeopleHtml(submittedByPeople)}
+                </div>
+            ` : '';
+
+            const submittedToList = submittedToPeople.length ? `
+                <div class="akten-chip-row">
+                    <span class="akten-chip-label">Eingebracht an</span>
+                    ${buildPeopleHtml(submittedToPeople)}
                 </div>
             ` : '';
 
@@ -1027,15 +1152,23 @@
                     <span class="akten-meta-label">Involvierte Personen</span>
                     <span class="akten-meta-value">${escapeHtml(involvedSummary)}</span>
                 </div>
+                <div class="akten-meta-line">
+                    <span class="akten-meta-label">Eingebracht von</span>
+                    <span class="akten-meta-value">${escapeHtml(submittedBySummary)}</span>
+                </div>
+                <div class="akten-meta-line">
+                    <span class="akten-meta-label">Eingebracht an</span>
+                    <span class="akten-meta-value">${escapeHtml(submittedToSummary)}</span>
+                </div>
                 ${sourceHtml}
-                ${peopleList}
+                ${submittedByList}
+                ${submittedToList}
                 <div class="akten-stages">${buildStageHtml(akten)}</div>
                 ${buildChipRow('Themen', akten.topics || [])}
                 ${buildChipRow('Schlagwörter', akten.headwords || [])}
                 ${buildChipRow('EUROVOC', akten.eurovoc || [])}
             `;
         }
-
         function updateAktenMetaBlocks(items) {
             const keys = Object.keys(items || {});
             if (!keys.length) {

@@ -344,18 +344,54 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
             continue;
         }
 
-        $partyCode = trim((string) (isset($entry['frak_code']) ? $entry['frak_code'] : ''));
+        $partyCode = app_normalize_frak_code(isset($entry['frak_code']) ? $entry['frak_code'] : '');
         $personUrl = app_parliament_make_absolute_url(isset($entry['url']) ? $entry['url'] : '');
         $pad = app_extract_pad_from_person_url($personUrl);
 
+        $profile = [
+            'name' => '',
+            'party_code' => '',
+            'is_government' => false,
+            'is_parliamentarian' => false
+        ];
+        if ($pad !== '') {
+            $profile = app_resolve_person_profile_by_pad($pad, $cache);
+        }
+
+        $isGovernment = !empty($profile['is_government']);
+        $isParliamentarian = !empty($profile['is_parliamentarian']);
+        $hasProfileSignal = trim((string) (isset($profile['name']) ? $profile['name'] : '')) !== ''
+            || trim((string) (isset($profile['party_code']) ? $profile['party_code'] : '')) !== ''
+            || $isGovernment
+            || $isParliamentarian;
+        if ($partyCode === '') {
+            $partyCode = app_normalize_frak_code(isset($profile['party_code']) ? $profile['party_code'] : '');
+        }
+
         $role = app_classify_akten_person_role($functionLabel);
+        if ($hasProfileSignal) {
+            if ($isGovernment) {
+                $role = 'recipient';
+                if ($functionLabel === '') {
+                    $functionLabel = 'Eingebracht an';
+                }
+            } else {
+                $role = 'initiator';
+                if ($functionLabel === '') {
+                    $functionLabel = 'Eingebracht von';
+                }
+            }
+        }
+
         $person = [
             'function' => $functionLabel,
             'name' => $name,
             'party_code' => $partyCode,
             'pad' => $pad,
             'url' => $personUrl,
-            'role' => $role
+            'role' => $role,
+            'is_government' => $isGovernment,
+            'is_parliamentarian' => $isParliamentarian
         ];
         $people[] = $person;
 
@@ -368,7 +404,28 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
     }
 
     if (empty($initiators) && !empty($people)) {
-        $initiators[] = $people[0];
+        foreach ($people as $person) {
+            if (!is_array($person)) {
+                continue;
+            }
+            if (empty($person['is_government'])) {
+                $initiators[] = $person;
+            }
+        }
+        if (empty($initiators)) {
+            $initiators[] = $people[0];
+        }
+    }
+
+    if (empty($recipients) && !empty($people)) {
+        foreach ($people as $person) {
+            if (!is_array($person)) {
+                continue;
+            }
+            if (!empty($person['is_government'])) {
+                $recipients[] = $person;
+            }
+        }
     }
 
     $topics = app_collect_bubble_labels(isset($content['topics']) ? $content['topics'] : null);
@@ -475,6 +532,10 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
         $personParty = app_normalize_frak_code(isset($profile['party_code']) ? $profile['party_code'] : '');
         $isGovernment = !empty($profile['is_government']);
         $isParliamentarian = !empty($profile['is_parliamentarian']);
+        $hasProfileSignal = trim((string) (isset($profile['name']) ? $profile['name'] : '')) !== ''
+            || trim((string) (isset($profile['party_code']) ? $profile['party_code'] : '')) !== ''
+            || $isGovernment
+            || $isParliamentarian;
 
         $person = [
             'function' => '',
@@ -492,14 +553,28 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
         $isRecipientByInquiryParty = $personParty !== '' && $inquiryParty !== '' && $personParty !== $inquiryParty;
         $isInitiatorByInquiryParty = $personParty !== '' && $inquiryParty !== '' && $personParty === $inquiryParty;
 
-        if (($isGovernment && !$isParliamentarian) || $isRecipientByParty || $isRecipientByInquiryParty) {
+        if ($hasProfileSignal) {
+            if ($isGovernment) {
+                $person['function'] = 'Eingebracht an';
+                $person['role'] = 'recipient';
+                $recipients[] = $person;
+                continue;
+            }
+
+            $person['function'] = 'Eingebracht von';
+            $person['role'] = 'initiator';
+            $initiators[] = $person;
+            continue;
+        }
+
+        if ($isRecipientByParty || $isRecipientByInquiryParty) {
             $person['function'] = 'Eingebracht an';
             $person['role'] = 'recipient';
             $recipients[] = $person;
             continue;
         }
 
-        if (($isParliamentarian && !$isGovernment) || $isInitiatorByInquiryParty || $isInitiatorByParty) {
+        if ($isInitiatorByInquiryParty || $isInitiatorByParty) {
             $person['function'] = 'Eingebracht von';
             $person['role'] = 'initiator';
             $initiators[] = $person;
