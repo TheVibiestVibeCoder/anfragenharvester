@@ -98,3 +98,78 @@ function app_extract_keywords($title, $stopwords) {
 
     return $keywords;
 }
+
+function app_parse_jsonish_list($value) {
+    if (is_array($value)) {
+        $items = $value;
+    } else {
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $items = $decoded;
+        } else {
+            $parts = preg_split('/\s*,\s*/', $raw);
+            $items = is_array($parts) ? $parts : [];
+        }
+    }
+
+    $normalized = [];
+    foreach ($items as $item) {
+        $text = trim((string) $item);
+        if ($text === '') {
+            continue;
+        }
+        if (!in_array($text, $normalized, true)) {
+            $normalized[] = $text;
+        }
+    }
+
+    return $normalized;
+}
+
+function app_html_to_plain_text($value) {
+    $text = html_entity_decode(strip_tags((string) $value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace('/\s+/', ' ', $text);
+    return trim((string) $text);
+}
+
+function app_extract_pad_from_person_url($url) {
+    $url = (string) $url;
+    if (preg_match('/\/person\/(\d+)/', $url, $matches)) {
+        return $matches[1];
+    }
+
+    return '';
+}
+
+function app_match_stage_key($text) {
+    $normalized = mb_strtolower((string) $text, 'UTF-8');
+    $normalized = strtr($normalized, [
+        'ä' => 'ae',
+        'ö' => 'oe',
+        'ü' => 'ue',
+        'ß' => 'ss'
+    ]);
+
+    if (strpos($normalized, 'einlangen im nationalrat') !== false) {
+        return 'einlangen';
+    }
+
+    if (strpos($normalized, 'uebermittlung') !== false) {
+        return 'uebermittlung';
+    }
+
+    if (strpos($normalized, 'mitteilung des einlangens') !== false) {
+        return 'mitteilung';
+    }
+
+    if (strpos($normalized, 'schriftliche beantwortung') !== false || strpos($normalized, 'beantwortung') !== false) {
+        return 'beantwortung';
+    }
+
+    return null;
+}

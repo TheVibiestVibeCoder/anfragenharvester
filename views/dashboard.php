@@ -229,6 +229,33 @@
 
 <header class="site-header w-full z-50" aria-hidden="true"></header>
 
+    <div id="page-loader" class="page-loader" role="status" aria-live="polite" aria-label="Daten werden geladen">
+        <div class="page-loader-card">
+            <p class="page-loader-kicker">Datenaufbau</p>
+            <h2 class="page-loader-title">Die Akten werden geladen</h2>
+            <p class="page-loader-copy">Bitte kurz warten. Wir bereiten die Parlamentsdaten für diesen Zeitraum auf.</p>
+
+            <div class="page-loader-stats">
+                <div class="page-loader-stat">
+                    <span class="page-loader-label">Datensätze im Zeitraum</span>
+                    <strong id="loader-total-target"><?php echo number_format($totalCount, 0, ',', '.'); ?></strong>
+                </div>
+                <div class="page-loader-stat">
+                    <span class="page-loader-label">Aktuell geladen</span>
+                    <strong id="loader-count-current">0</strong>
+                </div>
+                <div class="page-loader-stat">
+                    <span class="page-loader-label">Akten auf dieser Seite</span>
+                    <strong><?php echo number_format(count($displayResults), 0, ',', '.'); ?></strong>
+                </div>
+            </div>
+
+            <div class="page-loader-bar" aria-hidden="true">
+                <span id="loader-bar-fill"></span>
+            </div>
+        </div>
+    </div>
+
     <section class="hero-shell">
 
         <div class="hero-inner">
@@ -428,7 +455,48 @@
                     </div>
 
                     <?php foreach ($displayResults as $result): ?>
-                        <div class="result-item grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-6 items-start group">
+                        <?php
+                        $akten = isset($result['akten']) && is_array($result['akten']) ? $result['akten'] : [];
+                        $people = isset($akten['people']) && is_array($akten['people']) ? $akten['people'] : [];
+                        $topics = isset($akten['topics']) && is_array($akten['topics']) ? $akten['topics'] : [];
+                        $headwords = isset($akten['headwords']) && is_array($akten['headwords']) ? $akten['headwords'] : [];
+                        $eurovoc = isset($akten['eurovoc']) && is_array($akten['eurovoc']) ? $akten['eurovoc'] : [];
+                        $stageOrder = isset($akten['stage_order']) && is_array($akten['stage_order']) ? $akten['stage_order'] : ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
+                        $stageMap = isset($akten['stages']) && is_array($akten['stages']) ? $akten['stages'] : [];
+                        $currentStageLabel = isset($akten['current_stage_label']) ? trim((string) $akten['current_stage_label']) : '';
+                        if ($currentStageLabel === '') {
+                            $currentStageLabel = !empty($result['answered']) ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat';
+                        }
+
+                        $submittedByPeople = [];
+                        $submittedToPeople = [];
+                        foreach ($people as $person) {
+                            if (!is_array($person)) {
+                                continue;
+                            }
+                            $hasGovFlag = array_key_exists('is_government', $person);
+                            $isGovernment = $hasGovFlag ? !empty($person['is_government']) : false;
+                            $personRole = trim((string) (isset($person['role']) ? $person['role'] : ''));
+
+                            if ($personRole === 'recipient' || ($hasGovFlag && $isGovernment)) {
+                                $submittedToPeople[] = $person;
+                                continue;
+                            }
+
+                            if ($personRole === 'initiator') {
+                                $submittedByPeople[] = $person;
+                                continue;
+                            }
+
+                            $submittedByPeople[] = $person;
+                        }
+                        $aktenKey = isset($result['akten_key']) ? trim((string) $result['akten_key']) : '';
+                        if ($aktenKey === '') {
+                            $dateIso = isset($result['date_obj']) && $result['date_obj'] instanceof DateTime ? $result['date_obj']->format('Y-m-d') : '';
+                            $aktenKey = sha1((string) ($result['link'] ?? '') . '|' . (string) ($result['number'] ?? '') . '|' . $dateIso);
+                        }
+                        ?>
+                        <div class="result-item grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-6 items-start group" data-akten-key="<?php echo htmlspecialchars($aktenKey); ?>">
                             
                             <div class="flex justify-between items-baseline md:hidden mb-1">
                                 <div class="flex items-center gap-2">
@@ -453,6 +521,118 @@
                                 <a href="<?php echo htmlspecialchars($result['link']); ?>" target="_blank" class="text-base md:text-lg text-white font-sans leading-snug hover:underline decoration-1 underline-offset-4 decoration-gray-500 block">
                                     <?php echo htmlspecialchars($result['title']); ?>
                                 </a>
+
+                                <div class="akten-meta-block">
+                                    <div class="akten-meta-line">
+                                        <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
+                                        <span class="akten-meta-value akten-status-pill"><?php echo htmlspecialchars($currentStageLabel); ?></span>
+                                    </div>
+                                    <?php if (!empty($submittedByPeople)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Eingebracht von</span>
+                                            <div class="akten-person-list">
+                                                <?php foreach (array_slice($submittedByPeople, 0, 8) as $person): ?>
+                                                    <?php
+                                                    $personName = isset($person['name']) ? trim((string) $person['name']) : '';
+                                                    $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
+                                                    if ($personName === '') {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <div class="akten-person-item">
+                                                        <span class="akten-person-main">
+                                                            <?php if ($personUrl !== ''): ?>
+                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
+                                                            <?php else: ?>
+                                                                <?php echo htmlspecialchars($personName); ?>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($submittedToPeople)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Eingebracht an</span>
+                                            <div class="akten-person-list">
+                                                <?php foreach (array_slice($submittedToPeople, 0, 8) as $person): ?>
+                                                    <?php
+                                                    $personName = isset($person['name']) ? trim((string) $person['name']) : '';
+                                                    $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
+                                                    if ($personName === '') {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <div class="akten-person-item">
+                                                        <span class="akten-person-main">
+                                                            <?php if ($personUrl !== ''): ?>
+                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
+                                                            <?php else: ?>
+                                                                <?php echo htmlspecialchars($personName); ?>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="akten-stages">
+                                        <?php foreach ($stageOrder as $stageKey): ?>
+                                            <?php
+                                            $stage = isset($stageMap[$stageKey]) && is_array($stageMap[$stageKey]) ? $stageMap[$stageKey] : [
+                                                'label' => $stageKey,
+                                                'completed' => false,
+                                                'date' => ''
+                                            ];
+                                            $isCompleted = !empty($stage['completed']);
+                                            $stageLabel = isset($stage['label']) ? (string) $stage['label'] : $stageKey;
+                                            $stageDate = isset($stage['date']) ? trim((string) $stage['date']) : '';
+                                            ?>
+                                            <div class="akten-stage-item <?php echo $isCompleted ? 'is-done' : 'is-open'; ?>">
+                                                <span class="akten-stage-dot" aria-hidden="true"></span>
+                                                <span class="akten-stage-label"><?php echo htmlspecialchars($stageLabel); ?></span>
+                                                <?php if ($stageDate !== ''): ?>
+                                                    <span class="akten-stage-date"><?php echo htmlspecialchars($stageDate); ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+
+                                    <?php if (!empty($topics)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Themen</span>
+                                            <div class="akten-chip-wrap">
+                                                <?php foreach (array_slice($topics, 0, 8) as $topic): ?>
+                                                    <span class="akten-chip"><?php echo htmlspecialchars($topic); ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($headwords)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">Schlagwörter</span>
+                                            <div class="akten-chip-wrap">
+                                                <?php foreach (array_slice($headwords, 0, 8) as $headword): ?>
+                                                    <span class="akten-chip"><?php echo htmlspecialchars($headword); ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($eurovoc)): ?>
+                                        <div class="akten-chip-row">
+                                            <span class="akten-chip-label">EUROVOC</span>
+                                            <div class="akten-chip-wrap">
+                                                <?php foreach (array_slice($eurovoc, 0, 8) as $eurovocTerm): ?>
+                                                    <span class="akten-chip"><?php echo htmlspecialchars($eurovocTerm); ?></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
 
                             <div class="md:col-span-2 flex justify-end md:block md:text-right mt-2 md:mt-0">
@@ -688,6 +868,262 @@
     </footer>
 
     <script>
+        const loaderMeta = {
+            total: <?php echo (int) $totalCount; ?>,
+            details: <?php echo (int) count($displayResults); ?>
+        };
+        let loaderProgress = 0;
+
+        function setLoaderProgress(value) {
+            const safeTotal = Math.max(1, loaderMeta.details);
+            const bounded = Math.max(0, Math.min(safeTotal, Math.floor(value)));
+            loaderProgress = bounded;
+
+            const counter = document.getElementById('loader-count-current');
+            const bar = document.getElementById('loader-bar-fill');
+            if (counter) {
+                counter.textContent = bounded.toLocaleString('de-AT');
+            }
+            if (bar) {
+                bar.style.width = ((bounded / safeTotal) * 100).toFixed(2) + '%';
+            }
+        }
+
+        function animateLoaderProgress(target, durationMs) {
+            const startValue = loaderProgress;
+            const delta = Math.max(0, target - startValue);
+            if (delta === 0) {
+                return;
+            }
+
+            const duration = Math.max(250, durationMs || 800);
+            const startedAt = performance.now();
+
+            function tick(now) {
+                const ratio = Math.min(1, (now - startedAt) / duration);
+                const eased = 1 - Math.pow(1 - ratio, 3);
+                setLoaderProgress(startValue + (delta * eased));
+                if (ratio < 1) {
+                    requestAnimationFrame(tick);
+                }
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        function hidePageLoader() {
+            const loader = document.getElementById('page-loader');
+            if (!loader || loader.classList.contains('is-hidden')) {
+                return;
+            }
+
+            loader.classList.add('is-hidden');
+            setTimeout(function() {
+                loader.style.display = 'none';
+            }, 420);
+        }
+
+        function initPageLoader() {
+            setLoaderProgress(0);
+            const firstTarget = Math.min(loaderMeta.details, Math.max(1, Math.ceil(loaderMeta.details * 0.25)));
+            animateLoaderProgress(firstTarget, 650);
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function buildPeopleHtml(people) {
+            if (!Array.isArray(people) || people.length === 0) {
+                return '';
+            }
+
+            const rows = people.slice(0, 6).map(function(person) {
+                const name = escapeHtml(person.name || '');
+                const url = escapeHtml(person.url || '');
+                if (!name) {
+                    return '';
+                }
+
+                const nameHtml = url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500">${name}</a>` : name;
+
+                return `
+                    <div class="akten-person-item">
+                        <span class="akten-person-main">
+                            ${nameHtml}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+            return rows ? `<div class="akten-person-list">${rows}</div>` : '';
+        }
+
+        function buildStageHtml(akten) {
+            const stageOrder = Array.isArray(akten.stage_order) ? akten.stage_order : ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
+            const stageMap = (akten.stages && typeof akten.stages === 'object') ? akten.stages : {};
+            return stageOrder.map(function(stageKey) {
+                const stage = stageMap[stageKey] || { label: stageKey, completed: false, date: '' };
+                const doneClass = stage.completed ? 'is-done' : 'is-open';
+                const label = escapeHtml(stage.label || stageKey);
+                const date = escapeHtml(stage.date || '');
+                return `
+                    <div class="akten-stage-item ${doneClass}">
+                        <span class="akten-stage-dot" aria-hidden="true"></span>
+                        <span class="akten-stage-label">${label}</span>
+                        ${date ? `<span class="akten-stage-date">${date}</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function buildChipRow(label, values) {
+            if (!Array.isArray(values) || values.length === 0) {
+                return '';
+            }
+            const chips = values.slice(0, 8).map(function(value) {
+                return `<span class="akten-chip">${escapeHtml(value)}</span>`;
+            }).join('');
+            return `
+                <div class="akten-chip-row">
+                    <span class="akten-chip-label">${escapeHtml(label)}</span>
+                    <div class="akten-chip-wrap">${chips}</div>
+                </div>
+            `;
+        }
+
+        function splitPeopleByGovernment(people) {
+            const by = [];
+            const to = [];
+
+            (Array.isArray(people) ? people : []).forEach(function(person) {
+                if (!person || typeof person !== 'object') {
+                    return;
+                }
+
+                const hasGovFlag = Object.prototype.hasOwnProperty.call(person, 'is_government');
+                const govValue = person.is_government;
+                const isGovernment = govValue === true || govValue === 1 || govValue === '1' || String(govValue).toLowerCase() === 'true';
+                const role = String(person.role || '').trim().toLowerCase();
+
+                if (role === 'recipient' || (hasGovFlag && isGovernment)) {
+                    to.push(person);
+                    return;
+                }
+
+                if (role === 'initiator') {
+                    by.push(person);
+                    return;
+                }
+
+                by.push(person);
+            });
+
+            return { by: by, to: to };
+        }
+
+        function renderAktenMetaBlock(akten) {
+            const people = Array.isArray(akten.people) ? akten.people : [];
+            const split = splitPeopleByGovernment(people);
+            const submittedByPeople = split.by;
+            const submittedToPeople = split.to;
+            const currentStageLabel = akten.current_stage_label || 'Einlangen im Nationalrat';
+
+            const submittedByList = submittedByPeople.length ? `
+                <div class="akten-chip-row">
+                    <span class="akten-chip-label">Eingebracht von</span>
+                    ${buildPeopleHtml(submittedByPeople)}
+                </div>
+            ` : '';
+
+            const submittedToList = submittedToPeople.length ? `
+                <div class="akten-chip-row">
+                    <span class="akten-chip-label">Eingebracht an</span>
+                    ${buildPeopleHtml(submittedToPeople)}
+                </div>
+            ` : '';
+
+            return `
+                <div class="akten-meta-line">
+                    <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
+                    <span class="akten-meta-value akten-status-pill">${escapeHtml(currentStageLabel)}</span>
+                </div>
+                ${submittedByList}
+                ${submittedToList}
+                <div class="akten-stages">${buildStageHtml(akten)}</div>
+                ${buildChipRow('Themen', akten.topics || [])}
+                ${buildChipRow('Schlagwörter', akten.headwords || [])}
+                ${buildChipRow('EUROVOC', akten.eurovoc || [])}
+            `;
+        }
+        function updateAktenMetaBlocks(items) {
+            const keys = Object.keys(items || {});
+            if (!keys.length) {
+                return;
+            }
+
+            let loaded = 0;
+            keys.forEach(function(key) {
+                const row = document.querySelector('.result-item[data-akten-key="' + key + '"]');
+                if (!row) {
+                    return;
+                }
+
+                const block = row.querySelector('.akten-meta-block');
+                if (!block) {
+                    return;
+                }
+
+                block.innerHTML = renderAktenMetaBlock(items[key] || {});
+                loaded++;
+                setLoaderProgress(loaded);
+            });
+        }
+
+        async function loadAktenDetails() {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.has('range')) {
+                params.set('range', '<?php echo htmlspecialchars($timeRange, ENT_QUOTES); ?>');
+            }
+            if (!params.has('page')) {
+                params.set('page', '<?php echo (int) $page; ?>');
+            }
+
+            const endpointUrl = 'akten-details.php?' + params.toString();
+            const waitCap = Math.max(1, Math.floor(loaderMeta.details * 0.8));
+            const waitTicker = setInterval(function() {
+                if (loaderProgress < waitCap) {
+                    setLoaderProgress(loaderProgress + 1);
+                }
+            }, 240);
+
+            try {
+                const response = await fetch(endpointUrl, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = await response.json();
+                if (!payload || payload.ok !== true || !payload.items) {
+                    return;
+                }
+
+                updateAktenMetaBlocks(payload.items);
+            } catch (error) {
+                console.error('Failed to load Akten details:', error);
+            } finally {
+                clearInterval(waitTicker);
+            }
+        }
+
         console.log('=== PARLIAMENT INQUIRY TRACKER DEBUG START ===');
 
         // Initialize charts function - called after Chart.js loads
@@ -1035,17 +1471,33 @@
 
         // Initialize charts when Chart.js is ready and DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Load Chart.js and initialize charts
-            loadChartJS().then(() => {
-                // Small delay to ensure Chart.js is fully initialized
-                requestAnimationFrame(() => {
+            initPageLoader();
+
+            const chartPromise = loadChartJS().then(() => {
+                const midTarget = Math.min(loaderMeta.details, Math.max(1, Math.ceil(loaderMeta.details * 0.55)));
+                animateLoaderProgress(midTarget, 650);
+
+                return new Promise(function(resolve) {
                     requestAnimationFrame(() => {
-                        initializeCharts();
+                        requestAnimationFrame(() => {
+                            initializeCharts();
+                            resolve();
+                        });
                     });
                 });
             }).catch(err => {
                 console.error('Failed to load Chart.js:', err);
             });
+
+            const aktenPromise = loadAktenDetails();
+
+            Promise.allSettled([chartPromise, aktenPromise]).then(function() {
+                setLoaderProgress(loaderMeta.details);
+                setTimeout(hidePageLoader, 260);
+            });
+
+            // Safety timeout so the overlay cannot get stuck
+            setTimeout(hidePageLoader, 15000);
         });
     </script>
 </body>
