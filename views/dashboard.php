@@ -297,40 +297,37 @@
             $exportUrl = 'export.php?' . http_build_query($exportParams);
             ?>
 
-            <div class="w-full lg:w-auto flex flex-col items-start gap-3">
-                <form method="GET" class="w-full lg:w-auto">
-                    <div class="flex flex-col items-start w-full">
-                        <label for="time-range-select" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Zeitraum wählen</label>
-                        <select id="time-range-select" name="range" onchange="this.form.from.value=''; this.form.to.value=''; this.form.submit();" class="w-full lg:w-auto" aria-label="Zeitraum für Anfragen auswählen">
-                            <option value="1week" <?php echo $timeRange === '1week' ? 'selected' : ''; ?>>LETZTE WOCHE</option>
-                            <option value="1month" <?php echo $timeRange === '1month' ? 'selected' : ''; ?>>LETZTER MONAT</option>
-                            <option value="3months" <?php echo $timeRange === '3months' ? 'selected' : ''; ?>>3 MONATE</option>
-                            <option value="6months" <?php echo $timeRange === '6months' ? 'selected' : ''; ?>>6 MONATE</option>
-                            <option value="12months" <?php echo $timeRange === '12months' ? 'selected' : ''; ?>>12 MONATE</option>
-                            <option value="1year" <?php echo $timeRange === '1year' ? 'selected' : ''; ?>>LETZTES JAHR</option>
-                            <option value="3years" <?php echo $timeRange === '3years' ? 'selected' : ''; ?>>3 JAHRE</option>
-                            <option value="5years" <?php echo $timeRange === '5years' ? 'selected' : ''; ?>>5 JAHRE</option>
-                        </select>
-                    </div>
+            <div class="w-full flex flex-col items-start gap-3">
+                <form method="GET" class="time-filter-form w-full">
+                    <div class="time-filter-row">
+                        <div class="time-filter-field time-filter-field--range">
+                            <label for="time-range-select" class="time-filter-label">Zeitraum wählen</label>
+                            <select id="time-range-select" name="range" onchange="this.form.from.value=''; this.form.to.value=''; this.form.submit();" class="time-filter-select" aria-label="Zeitraum für Anfragen auswählen">
+                                <option value="1week" <?php echo $timeRange === '1week' ? 'selected' : ''; ?>>LETZTE WOCHE</option>
+                                <option value="1month" <?php echo $timeRange === '1month' ? 'selected' : ''; ?>>LETZTER MONAT</option>
+                                <option value="3months" <?php echo $timeRange === '3months' ? 'selected' : ''; ?>>3 MONATE</option>
+                                <option value="6months" <?php echo $timeRange === '6months' ? 'selected' : ''; ?>>6 MONATE</option>
+                                <option value="12months" <?php echo $timeRange === '12months' ? 'selected' : ''; ?>>12 MONATE</option>
+                                <option value="1year" <?php echo $timeRange === '1year' ? 'selected' : ''; ?>>LETZTES JAHR</option>
+                                <option value="3years" <?php echo $timeRange === '3years' ? 'selected' : ''; ?>>3 JAHRE</option>
+                                <option value="5years" <?php echo $timeRange === '5years' ? 'selected' : ''; ?>>5 JAHRE</option>
+                            </select>
+                        </div>
 
-                    <div class="mt-3 w-full">
-                        <label class="text-[10px] uppercase tracking-widest text-gray-500 mb-1 block">Individueller Zeitraum</label>
-                        <div class="flex flex-wrap items-end gap-2">
-                            <div class="flex flex-col">
-                                <label for="custom-from" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Von</label>
-                                <input id="custom-from" type="date" name="from" value="<?php echo htmlspecialchars($customFrom); ?>" class="w-full lg:w-auto">
-                            </div>
-                            <div class="flex flex-col">
-                                <label for="custom-to" class="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Bis</label>
-                                <input id="custom-to" type="date" name="to" value="<?php echo htmlspecialchars($customTo); ?>" class="w-full lg:w-auto">
-                            </div>
-                            <button type="submit" class="inline-flex items-center border border-white text-white px-3 py-2 text-xs font-mono uppercase tracking-wide hover:bg-white hover:text-black transition-colors">
-                                Zeitraum anwenden
-                            </button>
+                        <div class="time-filter-field">
+                            <label for="custom-from" class="time-filter-label">Von</label>
+                            <input id="custom-from" type="date" name="from" value="<?php echo htmlspecialchars($customFrom); ?>" class="time-filter-input">
+                        </div>
+
+                        <div class="time-filter-field">
+                            <label for="custom-to" class="time-filter-label">Bis</label>
+                            <input id="custom-to" type="date" name="to" value="<?php echo htmlspecialchars($customTo); ?>" class="time-filter-input">
+                        </div>
+
+                        <div class="time-filter-actions">
+                            <button type="submit" class="time-filter-btn">Zeitraum anwenden</button>
                             <?php if (!empty($isCustomRange)): ?>
-                                <a href="?range=<?php echo urlencode($timeRange); ?>" class="inline-flex items-center border border-gray-600 text-gray-300 px-3 py-2 text-xs font-mono uppercase tracking-wide hover:border-gray-400 hover:text-white transition-colors">
-                                    Reset
-                                </a>
+                                <a href="?range=<?php echo urlencode($timeRange); ?>" class="time-filter-reset">Reset</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -517,6 +514,7 @@
                             $dateIso = isset($result['date_obj']) && $result['date_obj'] instanceof DateTime ? $result['date_obj']->format('Y-m-d') : '';
                             $aktenKey = sha1((string) ($result['link'] ?? '') . '|' . (string) ($result['number'] ?? '') . '|' . $dateIso);
                         }
+                        $aktenDetailsId = 'akten-details-' . $aktenKey;
                         ?>
                         <div class="result-item grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-6 items-start group" data-akten-key="<?php echo htmlspecialchars($aktenKey); ?>">
                             
@@ -543,117 +541,131 @@
                                 <a href="<?php echo htmlspecialchars($result['link']); ?>" target="_blank" class="text-base md:text-lg text-white font-sans leading-snug hover:underline decoration-1 underline-offset-4 decoration-gray-500 block">
                                     <?php echo htmlspecialchars($result['title']); ?>
                                 </a>
+                                <div class="akten-details-shell" data-details-shell>
+                                    <button
+                                        type="button"
+                                        class="akten-details-toggle"
+                                        data-details-toggle
+                                        aria-expanded="false"
+                                        aria-controls="<?php echo htmlspecialchars($aktenDetailsId); ?>"
+                                    >
+                                        <span class="akten-details-toggle-text">Details anzeigen</span>
+                                        <span class="akten-details-toggle-icon" aria-hidden="true">+</span>
+                                    </button>
 
-                                <div class="akten-meta-block">
-                                    <div class="akten-meta-line">
-                                        <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
-                                        <span class="akten-meta-value akten-status-pill"><?php echo htmlspecialchars($currentStageLabel); ?></span>
-                                    </div>
-                                    <?php if (!empty($submittedByPeople)): ?>
-                                        <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Eingebracht von</span>
-                                            <div class="akten-person-list">
-                                                <?php foreach (array_slice($submittedByPeople, 0, 8) as $person): ?>
+                                    <div id="<?php echo htmlspecialchars($aktenDetailsId); ?>" class="akten-details-content" data-details-content hidden>
+                                        <div class="akten-meta-block">
+                                            <div class="akten-meta-line">
+                                                <span class="akten-meta-label">Aktueller Stand im Verfahren</span>
+                                                <span class="akten-meta-value akten-status-pill"><?php echo htmlspecialchars($currentStageLabel); ?></span>
+                                            </div>
+                                            <?php if (!empty($submittedByPeople)): ?>
+                                                <div class="akten-chip-row">
+                                                    <span class="akten-chip-label">Eingebracht von</span>
+                                                    <div class="akten-person-list">
+                                                        <?php foreach (array_slice($submittedByPeople, 0, 8) as $person): ?>
+                                                            <?php
+                                                            $personName = isset($person['name']) ? trim((string) $person['name']) : '';
+                                                            $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
+                                                            if ($personName === '') {
+                                                                continue;
+                                                            }
+                                                            ?>
+                                                            <div class="akten-person-item">
+                                                                <span class="akten-person-main">
+                                                                    <?php if ($personUrl !== ''): ?>
+                                                                        <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
+                                                                    <?php else: ?>
+                                                                        <?php echo htmlspecialchars($personName); ?>
+                                                                    <?php endif; ?>
+                                                                </span>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($submittedToPeople)): ?>
+                                                <div class="akten-chip-row">
+                                                    <span class="akten-chip-label">Eingebracht an</span>
+                                                    <div class="akten-person-list">
+                                                        <?php foreach (array_slice($submittedToPeople, 0, 8) as $person): ?>
+                                                            <?php
+                                                            $personName = isset($person['name']) ? trim((string) $person['name']) : '';
+                                                            $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
+                                                            if ($personName === '') {
+                                                                continue;
+                                                            }
+                                                            ?>
+                                                            <div class="akten-person-item">
+                                                                <span class="akten-person-main">
+                                                                    <?php if ($personUrl !== ''): ?>
+                                                                        <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
+                                                                    <?php else: ?>
+                                                                        <?php echo htmlspecialchars($personName); ?>
+                                                                    <?php endif; ?>
+                                                                </span>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <div class="akten-stages">
+                                                <?php foreach ($stageOrder as $stageKey): ?>
                                                     <?php
-                                                    $personName = isset($person['name']) ? trim((string) $person['name']) : '';
-                                                    $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
-                                                    if ($personName === '') {
-                                                        continue;
-                                                    }
+                                                    $stage = isset($stageMap[$stageKey]) && is_array($stageMap[$stageKey]) ? $stageMap[$stageKey] : [
+                                                        'label' => $stageKey,
+                                                        'completed' => false,
+                                                        'date' => ''
+                                                    ];
+                                                    $isCompleted = !empty($stage['completed']);
+                                                    $stageLabel = isset($stage['label']) ? (string) $stage['label'] : $stageKey;
+                                                    $stageDate = isset($stage['date']) ? trim((string) $stage['date']) : '';
                                                     ?>
-                                                    <div class="akten-person-item">
-                                                        <span class="akten-person-main">
-                                                            <?php if ($personUrl !== ''): ?>
-                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
-                                                            <?php else: ?>
-                                                                <?php echo htmlspecialchars($personName); ?>
-                                                            <?php endif; ?>
-                                                        </span>
+                                                    <div class="akten-stage-item <?php echo $isCompleted ? 'is-done' : 'is-open'; ?>">
+                                                        <span class="akten-stage-dot" aria-hidden="true"></span>
+                                                        <span class="akten-stage-label"><?php echo htmlspecialchars($stageLabel); ?></span>
+                                                        <?php if ($stageDate !== ''): ?>
+                                                            <span class="akten-stage-date"><?php echo htmlspecialchars($stageDate); ?></span>
+                                                        <?php endif; ?>
                                                     </div>
                                                 <?php endforeach; ?>
                                             </div>
-                                        </div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($submittedToPeople)): ?>
-                                        <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Eingebracht an</span>
-                                            <div class="akten-person-list">
-                                                <?php foreach (array_slice($submittedToPeople, 0, 8) as $person): ?>
-                                                    <?php
-                                                    $personName = isset($person['name']) ? trim((string) $person['name']) : '';
-                                                    $personUrl = isset($person['url']) ? trim((string) $person['url']) : '';
-                                                    if ($personName === '') {
-                                                        continue;
-                                                    }
-                                                    ?>
-                                                    <div class="akten-person-item">
-                                                        <span class="akten-person-main">
-                                                            <?php if ($personUrl !== ''): ?>
-                                                                <a href="<?php echo htmlspecialchars($personUrl); ?>" target="_blank" rel="noopener noreferrer" class="underline decoration-1 underline-offset-2 decoration-gray-500"><?php echo htmlspecialchars($personName); ?></a>
-                                                            <?php else: ?>
-                                                                <?php echo htmlspecialchars($personName); ?>
-                                                            <?php endif; ?>
-                                                        </span>
+
+                                            <?php if (!empty($topics)): ?>
+                                                <div class="akten-chip-row">
+                                                    <span class="akten-chip-label">Themen</span>
+                                                    <div class="akten-chip-wrap">
+                                                        <?php foreach (array_slice($topics, 0, 8) as $topic): ?>
+                                                            <span class="akten-chip"><?php echo htmlspecialchars($topic); ?></span>
+                                                        <?php endforeach; ?>
                                                     </div>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
 
-                                    <div class="akten-stages">
-                                        <?php foreach ($stageOrder as $stageKey): ?>
-                                            <?php
-                                            $stage = isset($stageMap[$stageKey]) && is_array($stageMap[$stageKey]) ? $stageMap[$stageKey] : [
-                                                'label' => $stageKey,
-                                                'completed' => false,
-                                                'date' => ''
-                                            ];
-                                            $isCompleted = !empty($stage['completed']);
-                                            $stageLabel = isset($stage['label']) ? (string) $stage['label'] : $stageKey;
-                                            $stageDate = isset($stage['date']) ? trim((string) $stage['date']) : '';
-                                            ?>
-                                            <div class="akten-stage-item <?php echo $isCompleted ? 'is-done' : 'is-open'; ?>">
-                                                <span class="akten-stage-dot" aria-hidden="true"></span>
-                                                <span class="akten-stage-label"><?php echo htmlspecialchars($stageLabel); ?></span>
-                                                <?php if ($stageDate !== ''): ?>
-                                                    <span class="akten-stage-date"><?php echo htmlspecialchars($stageDate); ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                        <?php endforeach; ?>
+                                            <?php if (!empty($headwords)): ?>
+                                                <div class="akten-chip-row">
+                                                    <span class="akten-chip-label">Schlagwörter</span>
+                                                    <div class="akten-chip-wrap">
+                                                        <?php foreach (array_slice($headwords, 0, 8) as $headword): ?>
+                                                            <span class="akten-chip"><?php echo htmlspecialchars($headword); ?></span>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <?php if (!empty($eurovoc)): ?>
+                                                <div class="akten-chip-row">
+                                                    <span class="akten-chip-label">EUROVOC</span>
+                                                    <div class="akten-chip-wrap">
+                                                        <?php foreach (array_slice($eurovoc, 0, 8) as $eurovocTerm): ?>
+                                                            <span class="akten-chip"><?php echo htmlspecialchars($eurovocTerm); ?></span>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-
-                                    <?php if (!empty($topics)): ?>
-                                        <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Themen</span>
-                                            <div class="akten-chip-wrap">
-                                                <?php foreach (array_slice($topics, 0, 8) as $topic): ?>
-                                                    <span class="akten-chip"><?php echo htmlspecialchars($topic); ?></span>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <?php if (!empty($headwords)): ?>
-                                        <div class="akten-chip-row">
-                                            <span class="akten-chip-label">Schlagwörter</span>
-                                            <div class="akten-chip-wrap">
-                                                <?php foreach (array_slice($headwords, 0, 8) as $headword): ?>
-                                                    <span class="akten-chip"><?php echo htmlspecialchars($headword); ?></span>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <?php if (!empty($eurovoc)): ?>
-                                        <div class="akten-chip-row">
-                                            <span class="akten-chip-label">EUROVOC</span>
-                                            <div class="akten-chip-wrap">
-                                                <?php foreach (array_slice($eurovoc, 0, 8) as $eurovocTerm): ?>
-                                                    <span class="akten-chip"><?php echo htmlspecialchars($eurovocTerm); ?></span>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -1095,6 +1107,91 @@
                 ${buildChipRow('EUROVOC', akten.eurovoc || [])}
             `;
         }
+
+        function refreshOpenAktenDetailsHeight(root) {
+            const scope = root && root.querySelectorAll ? root : document;
+            scope.querySelectorAll('.akten-details-shell.is-open [data-details-content]').forEach(function(content) {
+                if (!content || content.hidden) {
+                    return;
+                }
+                content.style.maxHeight = content.scrollHeight + 'px';
+            });
+        }
+
+        function setAktenDetailsExpanded(shell, shouldExpand) {
+            if (!shell) {
+                return;
+            }
+
+            const toggle = shell.querySelector('[data-details-toggle]');
+            const content = shell.querySelector('[data-details-content]');
+            const label = shell.querySelector('.akten-details-toggle-text');
+            if (!toggle || !content || !label) {
+                return;
+            }
+
+            if (content._closeTimer) {
+                clearTimeout(content._closeTimer);
+                content._closeTimer = null;
+            }
+
+            if (shouldExpand) {
+                content.hidden = false;
+                content.style.maxHeight = '0px';
+                shell.classList.add('is-open');
+                toggle.setAttribute('aria-expanded', 'true');
+                label.textContent = 'Details ausblenden';
+
+                requestAnimationFrame(function() {
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                });
+                return;
+            }
+
+            content.style.maxHeight = content.scrollHeight + 'px';
+            toggle.setAttribute('aria-expanded', 'false');
+            label.textContent = 'Details anzeigen';
+
+            requestAnimationFrame(function() {
+                shell.classList.remove('is-open');
+                content.style.maxHeight = '0px';
+            });
+
+            content._closeTimer = setTimeout(function() {
+                if (!shell.classList.contains('is-open')) {
+                    content.hidden = true;
+                }
+            }, 460);
+        }
+
+        function initAktenDetailToggles() {
+            document.querySelectorAll('[data-details-shell]').forEach(function(shell) {
+                const toggle = shell.querySelector('[data-details-toggle]');
+                const content = shell.querySelector('[data-details-content]');
+                const label = shell.querySelector('.akten-details-toggle-text');
+
+                if (!toggle || !content || !label) {
+                    return;
+                }
+
+                if (toggle.dataset.bound === '1') {
+                    return;
+                }
+                toggle.dataset.bound = '1';
+
+                shell.classList.remove('is-open');
+                content.hidden = true;
+                content.style.maxHeight = '0px';
+                toggle.setAttribute('aria-expanded', 'false');
+                label.textContent = 'Details anzeigen';
+
+                toggle.addEventListener('click', function() {
+                    const isOpen = shell.classList.contains('is-open');
+                    setAktenDetailsExpanded(shell, !isOpen);
+                });
+            });
+        }
+
         function updateAktenMetaBlocks(items) {
             const keys = Object.keys(items || {});
             if (!keys.length) {
@@ -1114,6 +1211,7 @@
                 }
 
                 block.innerHTML = renderAktenMetaBlock(items[key] || {});
+                refreshOpenAktenDetailsHeight(row);
                 loaded++;
                 setLoaderProgress(loaded);
             });
@@ -1506,6 +1604,17 @@
         // Initialize charts when Chart.js is ready and DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             initPageLoader();
+            initAktenDetailToggles();
+
+            let aktenResizeTimer = null;
+            window.addEventListener('resize', function() {
+                if (aktenResizeTimer !== null) {
+                    clearTimeout(aktenResizeTimer);
+                }
+                aktenResizeTimer = setTimeout(function() {
+                    refreshOpenAktenDetailsHeight(document);
+                }, 120);
+            });
 
             const chartPromise = loadChartJS().then(() => {
                 const midTarget = Math.min(loaderMeta.details, Math.max(1, Math.ceil(loaderMeta.details * 0.55)));
