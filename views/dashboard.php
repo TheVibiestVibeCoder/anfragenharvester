@@ -478,8 +478,13 @@
                             $isGovernment = $hasGovFlag ? !empty($person['is_government']) : false;
                             $personRole = trim((string) (isset($person['role']) ? $person['role'] : ''));
 
-                            if (($hasGovFlag && $isGovernment) || (!$hasGovFlag && $personRole === 'recipient')) {
+                            if ($personRole === 'recipient' || ($hasGovFlag && $isGovernment)) {
                                 $submittedToPeople[] = $person;
+                                continue;
+                            }
+
+                            if ($personRole === 'initiator') {
+                                $submittedByPeople[] = $person;
                                 continue;
                             }
 
@@ -1041,8 +1046,13 @@
                 const isGovernment = govValue === true || govValue === 1 || govValue === '1' || String(govValue).toLowerCase() === 'true';
                 const role = String(person.role || '').trim().toLowerCase();
 
-                if ((hasGovFlag && isGovernment) || (!hasGovFlag && role === 'recipient')) {
+                if (role === 'recipient' || (hasGovFlag && isGovernment)) {
                     to.push(person);
+                    return;
+                }
+
+                if (role === 'initiator') {
+                    by.push(person);
                     return;
                 }
 

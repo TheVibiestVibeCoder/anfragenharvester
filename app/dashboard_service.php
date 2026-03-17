@@ -298,7 +298,7 @@ function app_enrich_results_for_akten(array $results, $cache) {
             continue;
         }
 
-        $historyCacheKey = 'geschichtsseite_v3_' . md5((string) ($result['link'] ?? ''));
+        $historyCacheKey = 'geschichtsseite_v4_' . md5((string) ($result['link'] ?? ''));
         $aktenData = $cache->get($historyCacheKey);
 
         if (!is_array($aktenData)) {
@@ -369,13 +369,13 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
         }
 
         $role = app_classify_akten_person_role($functionLabel);
-        if ($hasProfileSignal) {
+        if ($role === 'other' && $hasProfileSignal) {
             if ($isGovernment) {
                 $role = 'recipient';
                 if ($functionLabel === '') {
                     $functionLabel = 'Eingebracht an';
                 }
-            } else {
+            } elseif ($isParliamentarian) {
                 $role = 'initiator';
                 if ($functionLabel === '') {
                     $functionLabel = 'Eingebracht von';
@@ -553,14 +553,28 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
         $isRecipientByInquiryParty = $personParty !== '' && $inquiryParty !== '' && $personParty !== $inquiryParty;
         $isInitiatorByInquiryParty = $personParty !== '' && $inquiryParty !== '' && $personParty === $inquiryParty;
 
-        if ($hasProfileSignal) {
-            if ($isGovernment) {
-                $person['function'] = 'Eingebracht an';
-                $person['role'] = 'recipient';
-                $recipients[] = $person;
-                continue;
-            }
+        if ($isGovernment) {
+            $person['function'] = 'Eingebracht an';
+            $person['role'] = 'recipient';
+            $recipients[] = $person;
+            continue;
+        }
 
+        if ($isParliamentarian) {
+            $person['function'] = 'Eingebracht von';
+            $person['role'] = 'initiator';
+            $initiators[] = $person;
+            continue;
+        }
+
+        if ($hasProfileSignal && $isRecipientByInquiryParty) {
+            $person['function'] = 'Eingebracht an';
+            $person['role'] = 'recipient';
+            $recipients[] = $person;
+            continue;
+        }
+
+        if ($hasProfileSignal && $isInitiatorByInquiryParty) {
             $person['function'] = 'Eingebracht von';
             $person['role'] = 'initiator';
             $initiators[] = $person;
