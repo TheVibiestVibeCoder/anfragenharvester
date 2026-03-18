@@ -8,13 +8,17 @@ require_once __DIR__ . '/time_range.php';
 
 function app_build_export_payload(array $queryParams) {
     $requestedRange = isset($queryParams['range']) ? (string) $queryParams['range'] : '12months';
-    $rangeData = app_resolve_time_range($requestedRange);
+    $rangeData = app_resolve_time_range($requestedRange, $queryParams);
 
     $timeRange = $rangeData['timeRange'];
     $rangeLabel = $rangeData['rangeLabel'];
     $gpCodes = $rangeData['gpCodes'];
     $cutoffDate = $rangeData['cutoffDate'];
+    $endDate = isset($rangeData['endDate']) && $rangeData['endDate'] instanceof DateTime ? $rangeData['endDate'] : $rangeData['now'];
     $now = $rangeData['now'];
+    $isCustomRange = !empty($rangeData['isCustomRange']);
+    $customFrom = isset($rangeData['customFrom']) ? trim((string) $rangeData['customFrom']) : '';
+    $customTo = isset($rangeData['customTo']) ? trim((string) $rangeData['customTo']) : '';
     $docTypes = ['J', 'JPR'];
 
     $response = app_fetch_parliament_response($gpCodes, $docTypes, 45);
@@ -64,6 +68,9 @@ function app_build_export_payload(array $queryParams) {
             continue;
         }
         if ($rowDate < $cutoffDate) {
+            continue;
+        }
+        if ($rowDate > $endDate) {
             continue;
         }
 
@@ -118,6 +125,10 @@ function app_build_export_payload(array $queryParams) {
         'gp_codes' => $gpCodes,
         'doc_types' => $docTypes,
         'cutoff_date' => $cutoffDate->format('Y-m-d'),
+        'end_date' => $endDate->format('Y-m-d'),
+        'is_custom_range' => $isCustomRange ? 'yes' : 'no',
+        'custom_from' => $customFrom,
+        'custom_to' => $customTo,
         'current_timestamp' => $now->format('Y-m-d H:i:s'),
         'api_count' => $apiCount,
         'api_pages' => $apiPages,
@@ -388,7 +399,11 @@ function app_build_export_settings_rows(array $payload) {
         ['Export generated at (UTC)', (string) $payload['generated_at_utc']],
         ['Selected range key', (string) $payload['time_range']],
         ['Selected range label', (string) $payload['range_label']],
-        ['Cutoff date (inclusive)', (string) $payload['cutoff_date']],
+        ['Start date (inclusive)', (string) $payload['cutoff_date']],
+        ['End date (inclusive)', (string) $payload['end_date']],
+        ['Custom range active', (string) $payload['is_custom_range']],
+        ['Custom range from', (string) $payload['custom_from']],
+        ['Custom range to', (string) $payload['custom_to']],
         ['Current timestamp (server)', (string) $payload['current_timestamp']],
         ['API endpoint', APP_PARL_API_URL],
         ['Document types', implode(', ', (array) $payload['doc_types'])],
@@ -396,7 +411,7 @@ function app_build_export_settings_rows(array $payload) {
         ['API count field', (string) $payload['api_count']],
         ['API pages field', (string) $payload['api_pages']],
         ['Raw API rows returned', (string) $payload['api_row_count']],
-        ['Rows exported after cutoff', (string) count($payload['records'])],
+        ['Rows exported after date filtering', (string) count($payload['records'])],
         ['API columns exported', (string) $payload['api_column_count']]
     ];
 

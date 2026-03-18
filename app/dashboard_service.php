@@ -9,17 +9,21 @@ require_once __DIR__ . '/time_range.php';
 function app_build_dashboard_view_model($queryParams, $cache, array $options = []) {
     $includeAktenDetails = !array_key_exists('includeAktenDetails', $options) || (bool) $options['includeAktenDetails'];
     $requestedRange = isset($queryParams['range']) ? $queryParams['range'] : '12months';
-    $rangeData = app_resolve_time_range($requestedRange);
+    $rangeData = app_resolve_time_range($requestedRange, is_array($queryParams) ? $queryParams : []);
 
     $timeRange = $rangeData['timeRange'];
     $now = $rangeData['now'];
     $cutoffDate = $rangeData['cutoffDate'];
+    $endDate = isset($rangeData['endDate']) && $rangeData['endDate'] instanceof DateTime ? $rangeData['endDate'] : clone $now;
     $rangeLabel = $rangeData['rangeLabel'];
     $gpCodes = $rangeData['gpCodes'];
+    $isCustomRange = !empty($rangeData['isCustomRange']);
+    $customFrom = isset($rangeData['customFrom']) ? trim((string) $rangeData['customFrom']) : '';
+    $customTo = isset($rangeData['customTo']) ? trim((string) $rangeData['customTo']) : '';
     $stopwords = app_stopwords();
     $partyCodes = array_keys(app_default_party_stats());
 
-    $cacheKey = 'inquiry_data_v5_' . md5(serialize($gpCodes) . $cutoffDate->format('Y-m-d'));
+    $cacheKey = 'inquiry_data_v6_' . md5(serialize($gpCodes) . $cutoffDate->format('Y-m-d') . '|' . $endDate->format('Y-m-d') . '|' . ($isCustomRange ? '1' : '0'));
     $cachedData = $cache->get($cacheKey);
 
     if (is_array($cachedData)) {
@@ -54,6 +58,9 @@ function app_build_dashboard_view_model($queryParams, $cache, array $options = [
             if ($rowDate < $cutoffDate) {
                 continue;
             }
+            if ($rowDate > $endDate) {
+                continue;
+            }
 
             $rowTitle = trim((string) app_get_row_value($row, 6, 'TITEL'));
             if ($rowTitle === '') {
@@ -83,7 +90,12 @@ function app_build_dashboard_view_model($queryParams, $cache, array $options = [
                 $pendingCount++;
             }
 
-            $useDays = in_array($timeRange, ['1week', '1month'], true);
+            if ($isCustomRange) {
+                $spanDays = (int) $cutoffDate->diff($endDate)->format('%a');
+                $useDays = $spanDays <= 62;
+            } else {
+                $useDays = in_array($timeRange, ['1week', '1month'], true);
+            }
             $timeKey = $useDays ? $rowDate->format('Y-m-d') : $rowDate->format('Y-m');
             if (!isset($monthlyData[$timeKey])) {
                 $monthlyData[$timeKey] = [
@@ -251,8 +263,12 @@ function app_build_dashboard_view_model($queryParams, $cache, array $options = [
         'timeRange' => $timeRange,
         'now' => $now,
         'cutoffDate' => $cutoffDate,
+        'endDate' => $endDate,
         'rangeLabel' => $rangeLabel,
         'gpCodes' => $gpCodes,
+        'isCustomRange' => $isCustomRange,
+        'customFrom' => $customFrom,
+        'customTo' => $customTo,
         'allNGOResults' => $allResults,
         'allResults' => $allResults,
         'wordFrequency' => $wordFrequency,
@@ -475,10 +491,12 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
     }
 
     $currentStageLabel = app_resolve_current_stage_label($content, $stages, $result);
+    $currentStageKey = app_resolve_current_stage_key($stages, $currentStageLabel, $result);
 
     return [
         'source' => 'geschichtsseite',
         'current_stage_label' => $currentStageLabel,
+        'current_stage_key' => $currentStageKey,
         'people' => $people,
         'initiators' => $initiators,
         'recipients' => $recipients,
@@ -649,9 +667,13 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
 
     $people = array_merge($initiators, $recipients);
 
+    $currentStageLabel = $isAnswered ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat';
+    $currentStageKey = $isAnswered ? 'beantwortung' : 'einlangen';
+
     return [
         'source' => 'fallback',
-        'current_stage_label' => $isAnswered ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat',
+        'current_stage_label' => $currentStageLabel,
+        'current_stage_key' => $currentStageKey,
         'people' => $people,
         'initiators' => $initiators,
         'recipients' => $recipients,
@@ -749,6 +771,39 @@ function app_resolve_current_stage_label(array $content, array $stages, array $r
     }
 
     return 'Einlangen im Nationalrat';
+}
+
+function app_resolve_current_stage_key(array $stages, $currentStageLabel = '', array $result = []) {
+    $knownOrder = ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
+    $normalizedLabel = app_html_to_plain_text((string) $currentStageLabel);
+    if ($normalizedLabel !== '') {
+        $matchedFromLabel = app_match_stage_key($normalizedLabel);
+        if ($matchedFromLabel !== null && in_array($matchedFromLabel, $knownOrder, true)) {
+            return $matchedFromLabel;
+        }
+    }
+
+    foreach ($knownOrder as $stageKey) {
+        if (isset($stages[$stageKey]) && is_array($stages[$stageKey])) {
+            $stageLabel = isset($stages[$stageKey]['label']) ? app_html_to_plain_text((string) $stages[$stageKey]['label']) : '';
+            if ($stageLabel !== '' && $normalizedLabel !== '' && mb_strtolower($stageLabel, 'UTF-8') === mb_strtolower($normalizedLabel, 'UTF-8')) {
+                return $stageKey;
+            }
+        }
+    }
+
+    $priority = ['beantwortung', 'mitteilung', 'uebermittlung', 'einlangen'];
+    foreach ($priority as $stageKey) {
+        if (isset($stages[$stageKey]) && !empty($stages[$stageKey]['completed'])) {
+            return $stageKey;
+        }
+    }
+
+    if (!empty($result['answered'])) {
+        return 'beantwortung';
+    }
+
+    return 'einlangen';
 }
 
 function app_resolve_person_name_by_pad($pad, $cache = null) {

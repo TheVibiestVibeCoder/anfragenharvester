@@ -855,6 +855,8 @@ body.dashboard-page {
 
 .tracker-header {
     border-color: rgba(29, 47, 38, 0.5) !important;
+    display: grid;
+    gap: 0.75rem;
 }
 
 .tracker-header h2 {
@@ -862,17 +864,172 @@ body.dashboard-page {
     font-size: clamp(1.6rem, 3.9vw, 2.75rem);
 }
 
-.dashboard-main #time-range-select {
-    min-width: min(100%, 280px);
-    border-radius: 999px;
-    border: 1px solid rgba(29, 47, 38, 0.25) !important;
+.dashboard-main .tracker-controls-row {
+    align-items: stretch;
+}
+
+.dashboard-main .time-filter-form {
+    width: 100%;
+}
+
+.dashboard-main .time-filter-stack {
+    display: grid;
+    gap: 0.68rem;
+    width: 100%;
+}
+
+.dashboard-main .time-filter-block {
+    border: 1px solid rgba(29, 47, 38, 0.16);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 8px 24px rgba(23, 34, 30, 0.05);
+    padding: 0.62rem;
+}
+
+.dashboard-main .time-filter-block--fixed {
+    border-color: rgba(23, 77, 55, 0.3);
+    background: linear-gradient(180deg, rgba(47, 127, 73, 0.08), rgba(255, 255, 255, 0.92));
+}
+
+.dashboard-main .time-filter-block-title {
+    color: var(--freda-deep);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 0.46rem;
+    padding-left: 0.2rem;
+}
+
+.dashboard-main .time-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.58rem;
+    padding: 0;
+}
+
+.dashboard-main .time-filter-row--fixed {
+    align-items: center;
+}
+
+.dashboard-main .time-filter-row--custom {
+    align-items: flex-end;
+}
+
+.dashboard-main .time-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    min-width: 128px;
+    flex: 1 1 128px;
+}
+
+.dashboard-main .time-filter-field--range {
+    min-width: 230px;
+    flex: 2 1 260px;
+}
+
+.dashboard-main .time-filter-field--full {
+    min-width: 100%;
+    flex: 1 1 100%;
+}
+
+.dashboard-main .time-filter-label {
+    color: var(--freda-muted);
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding-left: 0.22rem;
+}
+
+.dashboard-main .time-filter-select,
+.dashboard-main .time-filter-input {
+    width: 100%;
+    height: 42px;
+    border-radius: 999px !important;
+    border: 1px solid rgba(29, 47, 38, 0.24) !important;
     background: #fff !important;
     color: var(--freda-deep) !important;
     font-family: var(--font-mono) !important;
-    font-size: clamp(0.9rem, 1.2vw, 1rem) !important;
-    font-weight: 700;
-    padding: 0.62rem 2.2rem 0.62rem 0.95rem !important;
+    font-size: 0.82rem !important;
     letter-spacing: 0.04em;
+    padding: 0.58rem 0.92rem !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-main .time-filter-select {
+    min-width: 0;
+    padding-right: 2.1rem !important;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23174D37%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.72rem center !important;
+    background-size: 0.56em auto !important;
+}
+
+.dashboard-main .time-filter-select:focus,
+.dashboard-main .time-filter-input:focus {
+    outline: none;
+    border-color: rgba(23, 77, 55, 0.62) !important;
+    box-shadow: 0 0 0 3px rgba(23, 77, 55, 0.13);
+}
+
+.dashboard-main .time-filter-input::-webkit-calendar-picker-indicator {
+    opacity: 0.72;
+    cursor: pointer;
+}
+
+.dashboard-main .time-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.46rem;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.dashboard-main .time-filter-btn,
+.dashboard-main .time-filter-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
+    border-radius: 999px;
+    padding: 0 0.95rem;
+    border: 1px solid rgba(29, 47, 38, 0.3);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+}
+
+.dashboard-main .time-filter-btn {
+    background: var(--freda-accent);
+    color: #fff;
+    border-color: var(--freda-accent);
+}
+
+.dashboard-main .time-filter-reset {
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--freda-ink-soft);
+}
+
+.dashboard-main .time-filter-btn:hover,
+.dashboard-main .time-filter-reset:hover {
+    transform: translateY(-1px);
+}
+
+.dashboard-main .time-filter-btn:hover {
+    background: #0f3f2d;
+    border-color: #0f3f2d;
+}
+
+.dashboard-main .time-filter-reset:hover {
+    border-color: rgba(29, 47, 38, 0.48);
+    color: var(--freda-deep);
 }
 
 /* Utility color adaptation inside dashboard */
@@ -1061,8 +1218,78 @@ body.dashboard-page {
     }
 }
 
+.akten-details-shell {
+    margin-top: 0.56rem;
+}
+
+.akten-details-toggle {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.48rem;
+    border: 1px solid rgba(29, 47, 38, 0.2);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--freda-ink-soft);
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.28rem 0.42rem 0.28rem 0.68rem;
+    transition: border-color 0.22s ease, background-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+    cursor: pointer;
+}
+
+.akten-details-toggle:hover {
+    border-color: rgba(29, 47, 38, 0.42);
+    color: var(--freda-deep);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.akten-details-shell.is-open .akten-details-toggle {
+    border-color: rgba(23, 77, 55, 0.44);
+    color: var(--freda-deep);
+    background: rgba(47, 127, 73, 0.12);
+}
+
+.akten-details-toggle-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(23, 77, 55, 0.14);
+    color: #174d37;
+    font-size: 0.94rem;
+    font-weight: 700;
+    line-height: 1;
+    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.22s ease, color 0.22s ease;
+}
+
+.akten-details-shell.is-open .akten-details-toggle-icon {
+    transform: rotate(45deg);
+    background: #174d37;
+    color: #fff;
+}
+
+.akten-details-content {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-7px);
+    transition: max-height 0.46s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease, transform 0.28s ease;
+    will-change: max-height, opacity, transform;
+}
+
+.akten-details-shell.is-open .akten-details-content {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .akten-meta-block {
-    margin-top: 0.7rem;
+    margin-top: 0.52rem;
     padding: 0.75rem;
     border: 1px solid rgba(29, 47, 38, 0.16);
     border-radius: 10px;
@@ -1119,7 +1346,8 @@ body.dashboard-page {
     background: #f8f6ee;
 }
 
-.akten-stage-item.is-done {
+.akten-stage-item.is-done,
+.akten-stage-item.is-current {
     border-color: rgba(23, 77, 55, 0.35);
     background: rgba(47, 127, 73, 0.08);
 }
@@ -1131,7 +1359,8 @@ body.dashboard-page {
     background: #bec7be;
 }
 
-.akten-stage-item.is-done .akten-stage-dot {
+.akten-stage-item.is-done .akten-stage-dot,
+.akten-stage-item.is-current .akten-stage-dot {
     background: #2f7f49;
 }
 
@@ -1150,6 +1379,16 @@ body.dashboard-page {
 .akten-chip-row {
     display: grid;
     gap: 0.35rem;
+}
+
+.akten-disclaimer {
+    margin-top: 0.08rem;
+    padding: 0.28rem 0.1rem 0;
+    border-top: 1px solid rgba(29, 47, 38, 0.14);
+    color: rgba(74, 87, 75, 0.82);
+    font-size: 0.58rem;
+    line-height: 1.28;
+    letter-spacing: 0.01em;
 }
 
 .akten-chip-label {
@@ -1221,6 +1460,45 @@ body.dashboard-page {
 .pag-btn.active {
     color: var(--freda-deep);
     border-bottom-color: var(--freda-deep);
+}
+
+@media (max-width: 1100px) {
+    .dashboard-main .time-filter-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 760px) {
+    .dashboard-main .time-filter-block {
+        padding: 0.55rem;
+    }
+
+    .dashboard-main .time-filter-row {
+        gap: 0.48rem;
+    }
+
+    .dashboard-main .time-filter-field,
+    .dashboard-main .time-filter-field--range {
+        min-width: 100%;
+        flex: 1 1 100%;
+    }
+
+    .dashboard-main .time-filter-actions {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-main .time-filter-btn,
+    .dashboard-main .time-filter-reset,
+    .akten-details-toggle,
+    .akten-details-toggle-icon,
+    .akten-details-content {
+        transition: none !important;
+    }
 }
 
 /* Footer */
