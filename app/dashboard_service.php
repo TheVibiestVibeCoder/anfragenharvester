@@ -5,6 +5,7 @@ require_once __DIR__ . '/party.php';
 require_once __DIR__ . '/inquiry_helpers.php';
 require_once __DIR__ . '/parliament_api.php';
 require_once __DIR__ . '/time_range.php';
+require_once __DIR__ . '/nr_ranking_service.php';
 
 function app_build_dashboard_view_model($queryParams, $cache, array $options = []) {
     $includeAktenDetails = !array_key_exists('includeAktenDetails', $options) || (bool) $options['includeAktenDetails'];
@@ -258,6 +259,16 @@ function app_build_dashboard_view_model($queryParams, $cache, array $options = [
     }
 
     $partyMap = app_party_map();
+    $refreshRankingRequested = isset($queryParams['refresh_nr_ranking']) && (string) $queryParams['refresh_nr_ranking'] === '1';
+    $nrInquiryRanking = app_empty_nr_inquiry_ranking();
+    try {
+        $nrInquiryRanking = app_build_nr_inquiry_ranking($cache, [
+            'force_refresh' => $refreshRankingRequested
+        ]);
+    } catch (Throwable $rankingError) {
+        error_log('NR inquiry ranking build failed: ' . $rankingError->getMessage());
+        $nrInquiryRanking = app_empty_nr_inquiry_ranking('Ranking konnte nicht aktualisiert werden.');
+    }
 
     return [
         'timeRange' => $timeRange,
@@ -289,7 +300,8 @@ function app_build_dashboard_view_model($queryParams, $cache, array $options = [
         'totalCount' => $totalCount,
         'earliestDate' => $earliestDate,
         'earliestDateFormatted' => $earliestDateFormatted,
-        'partyMap' => $partyMap
+        'partyMap' => $partyMap,
+        'nrInquiryRanking' => $nrInquiryRanking
     ];
 }
 
