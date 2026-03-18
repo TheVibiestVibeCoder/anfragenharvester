@@ -1381,6 +1381,16 @@ body.dashboard-page {
     gap: 0.35rem;
 }
 
+.akten-disclaimer {
+    border: 1px dashed rgba(29, 47, 38, 0.22);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.62);
+    padding: 0.45rem 0.55rem;
+    color: var(--freda-muted);
+    font-size: 0.68rem;
+    line-height: 1.35;
+}
+
 .akten-chip-label {
     color: var(--freda-muted);
     font-family: var(--font-mono);

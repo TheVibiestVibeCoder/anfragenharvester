@@ -633,6 +633,10 @@
                                                 </div>
                                             <?php endif; ?>
 
+                                            <div class="akten-disclaimer">
+                                                Hinweis: Die Zuordnung der beteiligten Personen kann in Einzelfällen ungenau sein, da sie von der Datenqualität der Parlamentsdaten abhängt.
+                                            </div>
+
                                             <div class="akten-stages">
                                                 <?php foreach ($stageOrder as $stageKey): ?>
                                                     <?php
@@ -1162,6 +1166,9 @@
                 </div>
                 ${submittedByList}
                 ${submittedToList}
+                <div class="akten-disclaimer">
+                    Hinweis: Die Zuordnung der beteiligten Personen kann in Einzelfällen ungenau sein, da sie von der Datenqualität der Parlamentsdaten abhängt.
+                </div>
                 <div class="akten-stages">${buildStageHtml(akten)}</div>
                 ${buildChipRow('Themen', akten.topics || [])}
                 ${buildChipRow('Schlagwörter', akten.headwords || [])}
