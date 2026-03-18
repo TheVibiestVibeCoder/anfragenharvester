@@ -1110,6 +1110,17 @@ body.dashboard-page {
 
 .result-item:hover { background: #f8f7f2; }
 
+.dashboard-main .investigative-box,
+.dashboard-main .result-item,
+.dashboard-main .result-item > div {
+    min-width: 0;
+}
+
+.dashboard-main .result-item a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .page-loader {
     position: fixed;
     inset: 0;
@@ -1477,6 +1488,8 @@ body.dashboard-page {
     font-size: 0.64rem;
     letter-spacing: 0.04em;
     padding: 0.16rem 0.5rem;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .nr-ranking-table-wrap {
@@ -1589,6 +1602,85 @@ body.dashboard-page {
     .dashboard-main .time-filter-actions {
         flex-wrap: wrap;
         width: 100%;
+    }
+
+    .nr-ranking-meta {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.42rem;
+    }
+
+    .nr-ranking-chip {
+        width: 100%;
+        border-radius: 10px;
+        font-size: 0.62rem;
+        letter-spacing: 0.03em;
+        padding: 0.32rem 0.5rem;
+    }
+
+    .nr-ranking-table-wrap {
+        overflow: visible;
+        max-height: none;
+        padding: 0.45rem;
+    }
+
+    .nr-ranking-table {
+        min-width: 0;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .nr-ranking-table thead {
+        display: none;
+    }
+
+    .nr-ranking-table tbody {
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    .nr-ranking-table tbody tr {
+        display: grid;
+        gap: 0.28rem;
+        border: 1px solid rgba(29, 47, 38, 0.14);
+        border-radius: 10px;
+        background: #fff;
+        padding: 0.45rem 0.55rem;
+    }
+
+    .nr-ranking-table tbody tr:nth-child(2n) {
+        background: #fff;
+    }
+
+    .nr-ranking-table td {
+        display: grid;
+        grid-template-columns: minmax(88px, auto) 1fr;
+        align-items: center;
+        gap: 0.42rem;
+        padding: 0;
+        border-bottom: 0;
+        font-size: 0.75rem;
+    }
+
+    .nr-ranking-table td::before {
+        content: attr(data-label);
+        color: var(--freda-muted);
+        font-family: var(--font-mono);
+        font-size: 0.56rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        line-height: 1.1;
+    }
+
+    .nr-ranking-rank,
+    .nr-ranking-count {
+        font-size: 0.84rem;
+    }
+
+    .nr-ranking-status {
+        justify-self: start;
+        min-width: 0;
     }
 }
 

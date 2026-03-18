@@ -539,14 +539,14 @@
                                 }
                                 ?>
                                 <tr>
-                                    <td class="nr-ranking-rank">
+                                    <td class="nr-ranking-rank" data-label="Rang">
                                         <?php echo $rank !== null ? (int) $rank : '–'; ?>
                                     </td>
-                                    <td><?php echo htmlspecialchars($name !== '' ? $name : ('PAD ' . $pad)); ?></td>
-                                    <td><?php echo htmlspecialchars($clubLabel); ?></td>
-                                    <td><span class="font-mono"><?php echo htmlspecialchars($pad); ?></span></td>
-                                    <td class="nr-ranking-count"><?php echo $count !== null ? number_format($count) : 'N/A'; ?></td>
-                                    <td><span class="nr-ranking-status status-<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars($statusLabel); ?></span></td>
+                                    <td data-label="Name"><?php echo htmlspecialchars($name !== '' ? $name : ('PAD ' . $pad)); ?></td>
+                                    <td data-label="Fraktion"><?php echo htmlspecialchars($clubLabel); ?></td>
+                                    <td data-label="PAD"><span class="font-mono"><?php echo htmlspecialchars($pad); ?></span></td>
+                                    <td class="nr-ranking-count" data-label="Anzahl"><?php echo $count !== null ? number_format($count) : 'N/A'; ?></td>
+                                    <td data-label="Status"><span class="nr-ranking-status status-<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars($statusLabel); ?></span></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
