@@ -1346,7 +1346,8 @@ body.dashboard-page {
     background: #f8f6ee;
 }
 
-.akten-stage-item.is-done {
+.akten-stage-item.is-done,
+.akten-stage-item.is-current {
     border-color: rgba(23, 77, 55, 0.35);
     background: rgba(47, 127, 73, 0.08);
 }
@@ -1358,7 +1359,8 @@ body.dashboard-page {
     background: #bec7be;
 }
 
-.akten-stage-item.is-done .akten-stage-dot {
+.akten-stage-item.is-done .akten-stage-dot,
+.akten-stage-item.is-current .akten-stage-dot {
     background: #2f7f49;
 }
 

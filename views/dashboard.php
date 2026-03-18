@@ -496,6 +496,19 @@
                         if ($currentStageLabel === '') {
                             $currentStageLabel = !empty($result['answered']) ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat';
                         }
+                        $currentStageKey = isset($akten['current_stage_key']) ? trim((string) $akten['current_stage_key']) : '';
+                        if ($currentStageKey === '' || !in_array($currentStageKey, $stageOrder, true)) {
+                            $priorityStageOrder = ['beantwortung', 'mitteilung', 'uebermittlung', 'einlangen'];
+                            foreach ($priorityStageOrder as $candidateStageKey) {
+                                if (isset($stageMap[$candidateStageKey]) && !empty($stageMap[$candidateStageKey]['completed'])) {
+                                    $currentStageKey = $candidateStageKey;
+                                    break;
+                                }
+                            }
+                        }
+                        if ($currentStageKey === '' || !in_array($currentStageKey, $stageOrder, true)) {
+                            $currentStageKey = !empty($result['answered']) ? 'beantwortung' : 'einlangen';
+                        }
 
                         $submittedByPeople = [];
                         $submittedToPeople = [];
@@ -632,7 +645,7 @@
                                                     $stageLabel = isset($stage['label']) ? (string) $stage['label'] : $stageKey;
                                                     $stageDate = isset($stage['date']) ? trim((string) $stage['date']) : '';
                                                     ?>
-                                                    <div class="akten-stage-item <?php echo $isCompleted ? 'is-done' : 'is-open'; ?>">
+                                                    <div class="akten-stage-item <?php echo $stageKey === $currentStageKey ? 'is-current' : 'is-open'; ?>">
                                                         <span class="akten-stage-dot" aria-hidden="true"></span>
                                                         <span class="akten-stage-label"><?php echo htmlspecialchars($stageLabel); ?></span>
                                                         <?php if ($stageDate !== ''): ?>
@@ -1023,9 +1036,10 @@
         function buildStageHtml(akten) {
             const stageOrder = Array.isArray(akten.stage_order) ? akten.stage_order : ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
             const stageMap = (akten.stages && typeof akten.stages === 'object') ? akten.stages : {};
+            const currentStageKey = resolveCurrentStageKey(akten, stageOrder, stageMap);
             return stageOrder.map(function(stageKey) {
                 const stage = stageMap[stageKey] || { label: stageKey, completed: false, date: '' };
-                const doneClass = stage.completed ? 'is-done' : 'is-open';
+                const doneClass = stageKey === currentStageKey ? 'is-current' : 'is-open';
                 const label = escapeHtml(stage.label || stageKey);
                 const date = escapeHtml(stage.date || '');
                 return `
@@ -1036,6 +1050,43 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function resolveCurrentStageKey(akten, stageOrder, stageMap) {
+            const fallbackOrder = ['beantwortung', 'mitteilung', 'uebermittlung', 'einlangen'];
+            const normalizedOrder = Array.isArray(stageOrder) && stageOrder.length
+                ? stageOrder
+                : ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
+
+            const explicitKey = String((akten && akten.current_stage_key) || '').trim();
+            if (explicitKey && normalizedOrder.indexOf(explicitKey) !== -1) {
+                return explicitKey;
+            }
+
+            const label = String((akten && akten.current_stage_label) || '').trim().toLowerCase();
+            if (label) {
+                if (label.indexOf('schriftliche beantwortung') !== -1 || label.indexOf('beantwortung') !== -1) {
+                    return 'beantwortung';
+                }
+                if (label.indexOf('mitteilung') !== -1 && label.indexOf('einlangens') !== -1) {
+                    return 'mitteilung';
+                }
+                if (label.indexOf('uebermittlung') !== -1 || label.indexOf('übermittlung') !== -1) {
+                    return 'uebermittlung';
+                }
+                if (label.indexOf('einlangen im nationalrat') !== -1 || label.indexOf('einlangen') !== -1) {
+                    return 'einlangen';
+                }
+            }
+
+            const map = stageMap && typeof stageMap === 'object' ? stageMap : {};
+            for (const key of fallbackOrder) {
+                if (map[key] && map[key].completed) {
+                    return key;
+                }
+            }
+
+            return 'einlangen';
         }
 
         function buildChipRow(label, values) {

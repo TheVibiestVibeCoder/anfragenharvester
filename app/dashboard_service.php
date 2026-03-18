@@ -491,10 +491,12 @@ function app_build_akten_from_geschichtsseite(array $historyResponse, array $res
     }
 
     $currentStageLabel = app_resolve_current_stage_label($content, $stages, $result);
+    $currentStageKey = app_resolve_current_stage_key($stages, $currentStageLabel, $result);
 
     return [
         'source' => 'geschichtsseite',
         'current_stage_label' => $currentStageLabel,
+        'current_stage_key' => $currentStageKey,
         'people' => $people,
         'initiators' => $initiators,
         'recipients' => $recipients,
@@ -665,9 +667,13 @@ function app_build_akten_fallback(array $result, $cache = null, $resolvePadNames
 
     $people = array_merge($initiators, $recipients);
 
+    $currentStageLabel = $isAnswered ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat';
+    $currentStageKey = $isAnswered ? 'beantwortung' : 'einlangen';
+
     return [
         'source' => 'fallback',
-        'current_stage_label' => $isAnswered ? 'Schriftliche Beantwortung' : 'Einlangen im Nationalrat',
+        'current_stage_label' => $currentStageLabel,
+        'current_stage_key' => $currentStageKey,
         'people' => $people,
         'initiators' => $initiators,
         'recipients' => $recipients,
@@ -765,6 +771,39 @@ function app_resolve_current_stage_label(array $content, array $stages, array $r
     }
 
     return 'Einlangen im Nationalrat';
+}
+
+function app_resolve_current_stage_key(array $stages, $currentStageLabel = '', array $result = []) {
+    $knownOrder = ['einlangen', 'uebermittlung', 'mitteilung', 'beantwortung'];
+    $normalizedLabel = app_html_to_plain_text((string) $currentStageLabel);
+    if ($normalizedLabel !== '') {
+        $matchedFromLabel = app_match_stage_key($normalizedLabel);
+        if ($matchedFromLabel !== null && in_array($matchedFromLabel, $knownOrder, true)) {
+            return $matchedFromLabel;
+        }
+    }
+
+    foreach ($knownOrder as $stageKey) {
+        if (isset($stages[$stageKey]) && is_array($stages[$stageKey])) {
+            $stageLabel = isset($stages[$stageKey]['label']) ? app_html_to_plain_text((string) $stages[$stageKey]['label']) : '';
+            if ($stageLabel !== '' && $normalizedLabel !== '' && mb_strtolower($stageLabel, 'UTF-8') === mb_strtolower($normalizedLabel, 'UTF-8')) {
+                return $stageKey;
+            }
+        }
+    }
+
+    $priority = ['beantwortung', 'mitteilung', 'uebermittlung', 'einlangen'];
+    foreach ($priority as $stageKey) {
+        if (isset($stages[$stageKey]) && !empty($stages[$stageKey]['completed'])) {
+            return $stageKey;
+        }
+    }
+
+    if (!empty($result['answered'])) {
+        return 'beantwortung';
+    }
+
+    return 'einlangen';
 }
 
 function app_resolve_person_name_by_pad($pad, $cache = null) {
