@@ -29,7 +29,7 @@ function app_empty_nr_inquiry_ranking($reason = '') {
 function app_build_nr_inquiry_ranking($cache, array $options = []) {
     $forceRefresh = !empty($options['force_refresh']);
     $cacheTtl = isset($options['cache_ttl']) ? max(300, (int) $options['cache_ttl']) : 86400;
-    $cacheKey = 'nr_inquiry_ranking_v1';
+    $cacheKey = 'nr_inquiry_ranking_v2';
 
     if (!$forceRefresh && $cache && method_exists($cache, 'get')) {
         $cached = $cache->get($cacheKey);
@@ -582,27 +582,44 @@ function app_normalize_nr_member_records(array $members) {
 }
 
 function app_ranking_normalize_frak_code($code) {
-    $code = trim(mb_strtoupper((string) $code, 'UTF-8'));
+    $code = trim((string) $code);
     if ($code === '') {
         return '';
     }
-    if (strpos($code, 'SP') !== false || $code === 'S') {
+
+    $upper = mb_strtoupper($code, 'UTF-8');
+    $asciiUpper = function_exists('iconv') ? @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $upper) : false;
+    if (is_string($asciiUpper) && trim($asciiUpper) !== '') {
+        $upper = strtoupper($asciiUpper);
+    }
+
+    $compact = preg_replace('/[^A-Z0-9]+/', '', $upper);
+    if ($compact === '') {
+        return '';
+    }
+
+    if ($compact === 'S' || strpos($compact, 'SPO') !== false || strpos($upper, 'SOZIALDEMOKRAT') !== false) {
         return 'S';
     }
-    if (strpos($code, 'VP') !== false || $code === 'V') {
+    if (
+        $compact === 'V'
+        || strpos($compact, 'OEVP') !== false
+        || strpos($compact, 'OVP') !== false
+        || strpos($upper, 'VOLKSPARTEI') !== false
+    ) {
         return 'V';
     }
-    if (strpos($code, 'FP') !== false || $code === 'F') {
+    if ($compact === 'F' || strpos($compact, 'FPO') !== false || strpos($upper, 'FREIHEIT') !== false) {
         return 'F';
     }
-    if (strpos($code, 'GR') !== false || $code === 'G') {
+    if ($compact === 'G' || strpos($compact, 'GRUEN') !== false || strpos($compact, 'GRUNE') !== false) {
         return 'G';
     }
-    if (strpos($code, 'NEOS') !== false || $code === 'N') {
+    if ($compact === 'N' || strpos($compact, 'NEOS') !== false) {
         return 'N';
     }
 
-    return $code;
+    return $compact;
 }
 
 function app_fetch_written_inquiry_counts_by_members(array $members, array $options = []) {

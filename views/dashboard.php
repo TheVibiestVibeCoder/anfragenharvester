@@ -464,44 +464,59 @@
 
         <?php
         $nrRankingRows = isset($nrInquiryRanking['rows']) && is_array($nrInquiryRanking['rows']) ? $nrInquiryRanking['rows'] : [];
-        $nrRankingSummary = isset($nrInquiryRanking['status_summary']) && is_array($nrInquiryRanking['status_summary']) ? $nrInquiryRanking['status_summary'] : ['success' => 0, 'failed' => 0, 'timeout' => 0];
-        $nrRankingMembersTotal = isset($nrInquiryRanking['members_total']) ? (int) $nrInquiryRanking['members_total'] : count($nrRankingRows);
-        $nrRankingMembersSource = isset($nrInquiryRanking['members_source']) ? (string) $nrInquiryRanking['members_source'] : 'unbekannt';
-        $nrRankingSourceLabel = 'Unbekannt';
-        if ($nrRankingMembersSource === 'local_file') {
-            $nrRankingSourceLabel = 'Lokale Datei';
-        } elseif ($nrRankingMembersSource === 'nr_listing_page') {
-            $nrRankingSourceLabel = 'Nationalratsseite';
-        } elseif ($nrRankingMembersSource === 'derived_from_inquiries') {
-            $nrRankingSourceLabel = 'Aus Anfragen abgeleitet';
-        } elseif ($nrRankingMembersSource === 'none') {
-            $nrRankingSourceLabel = 'Keine Quelle';
-        }
-        $nrRankingUpdated = isset($nrInquiryRanking['updated_at_utc']) ? trim((string) $nrInquiryRanking['updated_at_utc']) : '';
-        $nrRankingLabel = isset($nrInquiryRanking['label']) ? (string) $nrInquiryRanking['label'] : 'Anzahl schriftlicher Anfragen (PAD-Beteiligungen)';
         $nrRankingReason = isset($nrInquiryRanking['reason']) ? trim((string) $nrInquiryRanking['reason']) : '';
+        $nrPartyLabels = [
+            'S' => 'SP' . "\u{00D6}",
+            'F' => 'FP' . "\u{00D6}",
+            'G' => 'GR' . "\u{00DC}" . 'NE',
+            'N' => 'NEOS',
+            'V' => "\u{00D6}" . 'VP'
+        ];
+        $normalizeNrPartyCode = static function ($value) {
+            $raw = trim((string) $value);
+            if ($raw === '') {
+                return '';
+            }
+
+            $upper = mb_strtoupper($raw, 'UTF-8');
+            $asciiUpper = function_exists('iconv') ? @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $upper) : false;
+            if (is_string($asciiUpper) && trim($asciiUpper) !== '') {
+                $upper = strtoupper($asciiUpper);
+            }
+            $compact = preg_replace('/[^A-Z0-9]+/', '', $upper);
+            if ($compact === '') {
+                return '';
+            }
+
+            if ($compact === 'S' || strpos($compact, 'SPO') !== false || strpos($upper, 'SOZIALDEMOKRAT') !== false) {
+                return 'S';
+            }
+            if ($compact === 'F' || strpos($compact, 'FPO') !== false || strpos($upper, 'FREIHEIT') !== false) {
+                return 'F';
+            }
+            if ($compact === 'G' || strpos($compact, 'GRUEN') !== false || strpos($compact, 'GRUNE') !== false) {
+                return 'G';
+            }
+            if ($compact === 'N' || strpos($compact, 'NEOS') !== false) {
+                return 'N';
+            }
+            if (
+                $compact === 'V'
+                || strpos($compact, 'OEVP') !== false
+                || strpos($compact, 'OVP') !== false
+                || strpos($upper, 'VOLKSPARTEI') !== false
+            ) {
+                return 'V';
+            }
+
+            return '';
+        };
         ?>
 
         <div class="investigative-box mb-20 lg:mb-24">
-            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
-                <h2 class="investigative-header mb-0">NR-Ranking<br><span class="text-gray-500 text-base md:text-lg font-sans font-normal"><?php echo htmlspecialchars($nrRankingLabel); ?></span></h2>
-                <?php if ($nrRankingUpdated !== ''): ?>
-                    <div class="text-xs font-mono text-gray-500">Stand (UTC): <?php echo htmlspecialchars($nrRankingUpdated); ?></div>
-                <?php endif; ?>
+            <div class="nr-ranking-head">
+                <h2 class="investigative-header mb-0">NR Leaderboard<br><span class="text-gray-500 text-base md:text-lg font-sans font-normal">Schriftliche Anfragen</span></h2>
             </div>
-
-            <div class="nr-ranking-meta">
-                <span class="nr-ranking-chip">Mitglieder: <?php echo number_format($nrRankingMembersTotal); ?></span>
-                <span class="nr-ranking-chip">Erfolgreich: <?php echo number_format((int) ($nrRankingSummary['success'] ?? 0)); ?></span>
-                <span class="nr-ranking-chip">Timeouts: <?php echo number_format((int) ($nrRankingSummary['timeout'] ?? 0)); ?></span>
-                <span class="nr-ranking-chip">Fehler: <?php echo number_format((int) ($nrRankingSummary['failed'] ?? 0)); ?></span>
-                <span class="nr-ranking-chip">Quelle Mitgliederliste: <?php echo htmlspecialchars($nrRankingSourceLabel); ?></span>
-            </div>
-
-            <p class="text-xs text-gray-500 mt-3">
-                Das Ranking misst Beteiligungen über PAD_INTERN und nicht zwingend alleinige Erstunterzeichner:innen.
-            </p>
-
             <?php if (!empty($nrRankingReason)): ?>
                 <p class="text-xs text-red-500 mt-2"><?php echo htmlspecialchars($nrRankingReason); ?></p>
             <?php endif; ?>
@@ -513,40 +528,34 @@
                     <table class="nr-ranking-table">
                         <thead>
                             <tr>
-                                <th>Rang</th>
                                 <th>Name</th>
-                                <th>Fraktion</th>
-                                <th>PAD</th>
+                                <th>Partei</th>
                                 <th>Anzahl</th>
-                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($nrRankingRows as $row): ?>
+                            <?php foreach ($nrRankingRows as $index => $row): ?>
                                 <?php
-                                $rank = isset($row['rank']) ? $row['rank'] : null;
+                                $rank = isset($row['rank']) && is_numeric($row['rank']) ? (int) $row['rank'] : ($index + 1);
                                 $name = isset($row['name']) ? (string) $row['name'] : '';
-                                $clubCode = isset($row['club']) ? trim((string) $row['club']) : '';
-                                $clubLabel = $clubCode !== '' && isset($partyMap[$clubCode]) ? $partyMap[$clubCode] : ($clubCode !== '' ? $clubCode : 'N/A');
+                                $clubRaw = isset($row['club']) ? trim((string) $row['club']) : '';
+                                $clubCode = $normalizeNrPartyCode($clubRaw);
+                                $clubLabel = isset($nrPartyLabels[$clubCode]) ? $nrPartyLabels[$clubCode] : 'Unbekannt';
+                                $clubClass = $clubCode !== '' ? strtolower($clubCode) : 'other';
                                 $pad = isset($row['pad']) ? (string) $row['pad'] : '';
                                 $count = isset($row['count']) && is_numeric($row['count']) ? (int) $row['count'] : null;
-                                $status = isset($row['status']) ? (string) $row['status'] : 'failed';
-                                $statusLabel = 'Fehler';
-                                if ($status === 'success') {
-                                    $statusLabel = 'OK';
-                                } elseif ($status === 'timeout') {
-                                    $statusLabel = 'Timeout';
-                                }
                                 ?>
                                 <tr>
-                                    <td class="nr-ranking-rank" data-label="Rang">
-                                        <?php echo $rank !== null ? (int) $rank : '–'; ?>
+                                    <td data-label="Name">
+                                        <div class="nr-leaderboard-name-wrap">
+                                            <span class="nr-leaderboard-rank">#<?php echo (int) $rank; ?></span>
+                                            <span class="nr-leaderboard-name"><?php echo htmlspecialchars($name !== '' ? $name : ('PAD ' . $pad)); ?></span>
+                                        </div>
                                     </td>
-                                    <td data-label="Name"><?php echo htmlspecialchars($name !== '' ? $name : ('PAD ' . $pad)); ?></td>
-                                    <td data-label="Fraktion"><?php echo htmlspecialchars($clubLabel); ?></td>
-                                    <td data-label="PAD"><span class="font-mono"><?php echo htmlspecialchars($pad); ?></span></td>
+                                    <td data-label="Partei">
+                                        <span class="nr-leaderboard-party party-<?php echo htmlspecialchars($clubClass); ?>"><?php echo htmlspecialchars($clubLabel); ?></span>
+                                    </td>
                                     <td class="nr-ranking-count" data-label="Anzahl"><?php echo $count !== null ? number_format($count) : 'N/A'; ?></td>
-                                    <td data-label="Status"><span class="nr-ranking-status status-<?php echo htmlspecialchars($status); ?>"><?php echo htmlspecialchars($statusLabel); ?></span></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
